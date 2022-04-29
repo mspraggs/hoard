@@ -76,7 +76,7 @@ func (s *StoreTesteSuite) TestGetFileByChangeRequestID() {
 		Salt: []byte{},
 	}
 
-	s.insertFileUploadHistoryRow(insertedFileUploadHistoryRow)
+	s.Require().NoError(s.insertFileUploadHistoryRow(insertedFileUploadHistoryRow))
 
 	s.Run("returns existing file upload matching request ID", func() {
 		expectedChangeType := changeType

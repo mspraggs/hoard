@@ -82,8 +82,6 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 		fakeFileSystem := fakeFS{path: fakeFile}
 
 		s.mockEncKeyGen.EXPECT().
-			Algorithm().Return(models.EncryptionAlgorithmAES256)
-		s.mockEncKeyGen.EXPECT().
 			GenerateKey(businessFileUpload).Return(encKey)
 		s.mockChecksummer.EXPECT().
 			Algorithm().Return(models.ChecksumAlgorithmSHA256)
@@ -139,8 +137,6 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			fakeFileSystem := fakeFS{path: fakeFile}
 
 			s.mockEncKeyGen.EXPECT().
-				Algorithm().Return(models.EncryptionAlgorithmAES256)
-			s.mockEncKeyGen.EXPECT().
 				GenerateKey(businessFileUpload).Return(encKey)
 			s.mockChecksummer.EXPECT().
 				Algorithm().Return(models.ChecksumAlgorithmSHA256)
@@ -178,8 +174,6 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			fakeFileSystem := fakeFS{path: fakeFile}
 
 			s.mockEncKeyGen.EXPECT().
-				Algorithm().Return(models.EncryptionAlgorithmAES256)
-			s.mockEncKeyGen.EXPECT().
 				GenerateKey(businessFileUpload).Return(encKey)
 			s.mockChecksummer.EXPECT().
 				Algorithm().Return(models.ChecksumAlgorithmSHA256)
@@ -206,9 +200,6 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 
 func (s *FilestoreTestSuite) newStore(fs fs.FS) *filestore.FileStore {
 	return filestore.New(
-		fs,
-		s.mockUploaderSelector,
-		s.mockEncKeyGen,
-		s.mockChecksummer,
+		fs, s.mockUploaderSelector, s.mockEncKeyGen, s.mockChecksummer,
 	)
 }

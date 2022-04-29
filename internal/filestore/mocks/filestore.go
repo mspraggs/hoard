@@ -128,20 +128,6 @@ func (m *MockEncryptionKeyGenerator) EXPECT() *MockEncryptionKeyGeneratorMockRec
 	return m.recorder
 }
 
-// Algorithm mocks base method.
-func (m *MockEncryptionKeyGenerator) Algorithm() models0.EncryptionAlgorithm {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Algorithm")
-	ret0, _ := ret[0].(models0.EncryptionAlgorithm)
-	return ret0
-}
-
-// Algorithm indicates an expected call of Algorithm.
-func (mr *MockEncryptionKeyGeneratorMockRecorder) Algorithm() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Algorithm", reflect.TypeOf((*MockEncryptionKeyGenerator)(nil).Algorithm))
-}
-
 // GenerateKey mocks base method.
 func (m *MockEncryptionKeyGenerator) GenerateKey(fileUpload *models0.FileUpload) models0.EncryptionKey {
 	m.ctrl.T.Helper()

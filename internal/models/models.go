@@ -8,6 +8,7 @@ type FileUpload struct {
 	Bucket              string
 	Version             string
 	Salt                []byte
+	EncryptionAlgorithm EncryptionAlgorithm
 	CreatedAtTimestamp  time.Time
 	UploadedAtTimestamp time.Time
 }

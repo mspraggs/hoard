@@ -4,6 +4,7 @@ CREATE TABLE file_uploads (
     bucket                TEXT NOT NULL,
     version               TEXT NOT NULL,
     salt                  BLOB NOT NULL,
+    encryption_algorithm  INTEGER NOT NULL,
     created_at_timestamp  DATETIME NOT NULL,
     uploaded_at_timestamp DATETIME NOT NULL
 );
@@ -15,6 +16,7 @@ CREATE TABLE file_uploads_history (
     bucket                TEXT NOT NULL,
     version               TEXT NOT NULL,
     salt                  BLOB NOT NULL,
+    encryption_algorithm  INTEGER NOT NULL,
     created_at_timestamp  DATETIME NOT NULL,
     uploaded_at_timestamp DATETIME NOT NULL,
     change_type           INTEGER NOT NULL

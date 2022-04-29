@@ -13,26 +13,34 @@ const (
 	ChangeTypeUpdate ChangeType = 2
 )
 
+type EncryptionAlgorithm int
+
+const (
+	EncryptionAlgorithmAES256 EncryptionAlgorithm = 1
+)
+
 type FileUploadRow struct {
-	ID                  string    `db:"id"`
-	LocalPath           string    `db:"local_path"`
-	Bucket              string    `db:"bucket"`
-	Version             string    `db:"version"`
-	Salt                []byte    `db:"salt"`
-	CreatedAtTimestamp  time.Time `db:"created_at_timestamp"`
-	UploadedAtTimestamp time.Time `db:"uploaded_at_timestamp"`
+	ID                  string              `db:"id"`
+	LocalPath           string              `db:"local_path"`
+	Bucket              string              `db:"bucket"`
+	Version             string              `db:"version"`
+	Salt                []byte              `db:"salt"`
+	EncryptionAlgorithm EncryptionAlgorithm `db:"encryption_algorithm"`
+	CreatedAtTimestamp  time.Time           `db:"created_at_timestamp"`
+	UploadedAtTimestamp time.Time           `db:"uploaded_at_timestamp"`
 }
 
 type FileUploadHistoryRow struct {
-	RequestID           string     `db:"request_id"`
-	ID                  string     `db:"id"`
-	LocalPath           string     `db:"local_path"`
-	Bucket              string     `db:"bucket"`
-	Version             string     `db:"version"`
-	Salt                []byte     `db:"salt"`
-	CreatedAtTimestamp  time.Time  `db:"created_at_timestamp"`
-	UploadedAtTimestamp time.Time  `db:"uploaded_at_timestamp"`
-	ChangeType          ChangeType `db:"change_type"`
+	RequestID           string              `db:"request_id"`
+	ID                  string              `db:"id"`
+	LocalPath           string              `db:"local_path"`
+	Bucket              string              `db:"bucket"`
+	Version             string              `db:"version"`
+	Salt                []byte              `db:"salt"`
+	EncryptionAlgorithm EncryptionAlgorithm `db:"encryption_algorithm"`
+	CreatedAtTimestamp  time.Time           `db:"created_at_timestamp"`
+	UploadedAtTimestamp time.Time           `db:"uploaded_at_timestamp"`
+	ChangeType          ChangeType          `db:"change_type"`
 }
 
 func NewChangeTypeFromBusiness(c models.ChangeType) ChangeType {
@@ -57,6 +65,24 @@ func (c ChangeType) ToBusiness() models.ChangeType {
 	}
 }
 
+func NewEncryptionAlgorithmFromBusiness(a models.EncryptionAlgorithm) EncryptionAlgorithm {
+	switch a {
+	case models.EncryptionAlgorithmAES256:
+		return EncryptionAlgorithmAES256
+	default:
+		return EncryptionAlgorithm(0)
+	}
+}
+
+func (a EncryptionAlgorithm) ToBusiness() models.EncryptionAlgorithm {
+	switch a {
+	case EncryptionAlgorithmAES256:
+		return models.EncryptionAlgorithmAES256
+	default:
+		return models.EncryptionAlgorithm(0)
+	}
+}
+
 func NewFileUploadRowFromBusiness(from *models.FileUpload) *FileUploadRow {
 	return &FileUploadRow{
 		ID:                  from.ID,
@@ -76,6 +102,7 @@ func (fu *FileUploadRow) ToBusiness() *models.FileUpload {
 		Bucket:              fu.Bucket,
 		Version:             fu.Version,
 		Salt:                fu.Salt,
+		EncryptionAlgorithm: fu.EncryptionAlgorithm.ToBusiness(),
 		CreatedAtTimestamp:  fu.CreatedAtTimestamp,
 		UploadedAtTimestamp: fu.UploadedAtTimestamp,
 	}
@@ -94,6 +121,7 @@ func NewFileUploadHistoryRowFromBusiness(
 		Bucket:              upload.LocalPath,
 		Version:             upload.Version,
 		Salt:                upload.Salt,
+		EncryptionAlgorithm: NewEncryptionAlgorithmFromBusiness(upload.EncryptionAlgorithm),
 		CreatedAtTimestamp:  upload.CreatedAtTimestamp,
 		UploadedAtTimestamp: upload.UploadedAtTimestamp,
 		ChangeType:          NewChangeTypeFromBusiness(changeType),
@@ -107,6 +135,7 @@ func (fu *FileUploadHistoryRow) ToBusiness() (*models.FileUpload, string, models
 		Bucket:              fu.Bucket,
 		Version:             fu.Version,
 		Salt:                fu.Salt,
+		EncryptionAlgorithm: fu.EncryptionAlgorithm.ToBusiness(),
 		CreatedAtTimestamp:  fu.CreatedAtTimestamp,
 		UploadedAtTimestamp: fu.UploadedAtTimestamp,
 	}, fu.RequestID, fu.ChangeType.ToBusiness()
