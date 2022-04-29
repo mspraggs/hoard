@@ -1,4 +1,4 @@
-package util
+package utils
 
 import (
 	"encoding/base64"
@@ -9,25 +9,19 @@ import (
 	"github.com/mspraggs/hoard/internal/models"
 )
 
+const (
+	memory  uint32 = 1024 * 64
+	time    uint32 = 1
+	threads uint8  = 1
+)
+
 type EncryptionKeyGenerator struct {
-	secret    []byte
-	algorithm models.EncryptionAlgorithm
-	time      uint32
-	memory    uint32
-	threads   uint8
-	keyLen    uint32
+	secret []byte
 }
 
-func NewEncryptionKeyGenerator(
-	secret []byte,
-	algorithm models.EncryptionAlgorithm,
-	time uint32,
-	memory uint32,
-	threads uint8,
-	keyLen uint32,
-) *EncryptionKeyGenerator {
+func NewEncryptionKeyGenerator(secret []byte) *EncryptionKeyGenerator {
 
-	return &EncryptionKeyGenerator{secret, algorithm, time, memory, threads, keyLen}
+	return &EncryptionKeyGenerator{secret}
 }
 
 func (ekg *EncryptionKeyGenerator) GenerateKey(
@@ -41,9 +35,9 @@ func (ekg *EncryptionKeyGenerator) GenerateKey(
 	keyBytes := argon2.Key(
 		ekg.secret,
 		fileUpload.Salt,
-		ekg.time,
-		ekg.memory,
-		ekg.threads,
+		time,
+		memory,
+		threads,
 		keyLen,
 	)
 
