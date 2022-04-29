@@ -34,9 +34,7 @@ type Uploader interface {
 	) error
 }
 
-type UploaderSelector interface {
-	SelectUploader(file fs.File) (Uploader, error)
-}
+type UploaderSelector func(file fs.File) (Uploader, error)
 
 type FileStore struct {
 	fs               fs.FS
@@ -75,7 +73,7 @@ func (s *FileStore) StoreFileUpload(
 		fileUpload.EncryptionAlgorithm, encKey, csAlg, fileUpload,
 	)
 
-	uploader, err := s.uploaderSelector.SelectUploader(file)
+	uploader, err := s.uploaderSelector(file)
 	if err != nil {
 		return nil, fmt.Errorf("unable to select file uploader: %w", err)
 	}
