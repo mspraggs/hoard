@@ -63,7 +63,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 	s.Run("uploads file with key and returns upload", func() {
 		fileID := "some-file"
 		path := "/path/to/file"
-		encKey := models.EncryptionKey("meh")
+		encKey := models.EncryptionKey([]byte{1, 2, 3})
 
 		businessFileUpload := &models.FileUpload{
 			ID:        fileID,
@@ -71,7 +71,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 		}
 		fsFileUpload := &fsmodels.FileUpload{
 			Key:                 fileID,
-			EncryptionKey:       fsmodels.EncryptionKey("meh"),
+			EncryptionKey:       fsmodels.EncryptionKey([]byte{1, 2, 3}),
 			EncryptionAlgorithm: types.ServerSideEncryptionAes256,
 			ChecksumAlgorithm:   types.ChecksumAlgorithmSha256,
 		}
@@ -127,7 +127,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			expectedErr := errors.New("oh no")
 			fileID := "some-file"
 			path := "/path/to/file"
-			encKey := models.EncryptionKey("")
+			encKey := models.EncryptionKey([]byte{})
 
 			businessFileUpload := &models.FileUpload{
 				ID:        fileID,
@@ -153,7 +153,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			expectedErr := errors.New("oh no")
 			fileID := "some-file"
 			path := "/path/to/file"
-			encKey := models.EncryptionKey("meh")
+			encKey := models.EncryptionKey([]byte{})
 
 			businessFileUpload := &models.FileUpload{
 				ID:        fileID,
@@ -187,7 +187,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			expectedErr := errors.New("oh no")
 			fileID := "some-file"
 			path := "/path/to/file"
-			encKey := models.EncryptionKey("meh")
+			encKey := models.EncryptionKey([]byte{1, 2, 3})
 
 			businessFileUpload := &models.FileUpload{
 				ID:        fileID,
@@ -195,7 +195,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			}
 			fsFileUpload := &fsmodels.FileUpload{
 				Key:                 fileID,
-				EncryptionKey:       fsmodels.EncryptionKey("meh"),
+				EncryptionKey:       fsmodels.EncryptionKey([]byte{1, 2, 3}),
 				EncryptionAlgorithm: types.ServerSideEncryptionAes256,
 				ChecksumAlgorithm:   types.ChecksumAlgorithmSha256,
 			}

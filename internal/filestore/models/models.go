@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/base64"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -11,7 +12,7 @@ import (
 
 type StorageClass = types.StorageClass
 
-type EncryptionKey string
+type EncryptionKey []byte
 
 type EncryptionAlgorithm = types.ServerSideEncryption
 
@@ -86,10 +87,11 @@ func (fu *FileUpload) ToCreateMultipartUploadInput(
 	opts ...CreateMultipartUploadInputOption,
 ) *CreateMultipartUploadInput {
 
+	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	input := &CreateMultipartUploadInput{
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
-		SSECustomerKey:       (*string)(&fu.EncryptionKey),
+		SSECustomerKey:       &sseKey,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 		ChecksumAlgorithm:    fu.ChecksumAlgorithm,
 		StorageClass:         fu.StorageClass,
@@ -106,10 +108,11 @@ func (fu *FileUpload) ToUploadPartInput(
 	opts ...UploadPartInputOption,
 ) *UploadPartInput {
 
+	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	input := &UploadPartInput{
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
-		SSECustomerKey:       (*string)(&fu.EncryptionKey),
+		SSECustomerKey:       &sseKey,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 		ChecksumAlgorithm:    fu.ChecksumAlgorithm,
 	}
@@ -125,10 +128,11 @@ func (fu *FileUpload) ToCompleteMultipartUploadInput(
 	opts ...CompleteMultipartUploadInputOption,
 ) *CompleteMultipartUploadInput {
 
+	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	input := &CompleteMultipartUploadInput{
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
-		SSECustomerKey:       (*string)(&fu.EncryptionKey),
+		SSECustomerKey:       &sseKey,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 	}
 
@@ -143,10 +147,11 @@ func (fu *FileUpload) ToPutObjectInput(
 	opts ...PutObjectInputOption,
 ) *PutObjectInput {
 
+	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	input := &PutObjectInput{
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
-		SSECustomerKey:       (*string)(&fu.EncryptionKey),
+		SSECustomerKey:       &sseKey,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 		ChecksumAlgorithm:    fu.ChecksumAlgorithm,
 		StorageClass:         fu.StorageClass,

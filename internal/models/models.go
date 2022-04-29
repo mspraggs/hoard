@@ -31,7 +31,7 @@ func (a EncryptionAlgorithm) KeySize() (uint32, error) {
 	}
 }
 
-type EncryptionKey string
+type EncryptionKey []byte
 
 type ChecksumAlgorithm int
 
