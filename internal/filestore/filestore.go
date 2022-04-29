@@ -22,7 +22,7 @@ type Checksummer interface {
 }
 
 type EncryptionKeyGenerator interface {
-	GenerateKey(fileUpload *models.FileUpload) models.EncryptionKey
+	GenerateKey(fileUpload *models.FileUpload) (models.EncryptionKey, error)
 }
 
 type Uploader interface {
@@ -66,7 +66,10 @@ func (s *FileStore) StoreFileUpload(
 	}
 	defer file.Close()
 
-	encKey := s.ekg.GenerateKey(fileUpload)
+	encKey, err := s.ekg.GenerateKey(fileUpload)
+	if err != nil {
+		return nil, err
+	}
 	csAlg := s.cs.Algorithm()
 	upload := fsmodels.NewFileUploadFromBusiness(
 		fileUpload.EncryptionAlgorithm, encKey, csAlg, fileUpload,

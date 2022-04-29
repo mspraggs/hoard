@@ -129,11 +129,12 @@ func (m *MockEncryptionKeyGenerator) EXPECT() *MockEncryptionKeyGeneratorMockRec
 }
 
 // GenerateKey mocks base method.
-func (m *MockEncryptionKeyGenerator) GenerateKey(fileUpload *models0.FileUpload) models0.EncryptionKey {
+func (m *MockEncryptionKeyGenerator) GenerateKey(fileUpload *models0.FileUpload) (models0.EncryptionKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GenerateKey", fileUpload)
 	ret0, _ := ret[0].(models0.EncryptionKey)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GenerateKey indicates an expected call of GenerateKey.

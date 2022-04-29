@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 type FileUpload struct {
 	ID                  string
@@ -18,6 +21,15 @@ type EncryptionAlgorithm int
 const (
 	EncryptionAlgorithmAES256 EncryptionAlgorithm = 1
 )
+
+func (a EncryptionAlgorithm) KeySize() (uint32, error) {
+	switch a {
+	case EncryptionAlgorithmAES256:
+		return 256, nil
+	default:
+		return 0, errors.New("unknown encryption algorithm")
+	}
+}
 
 type EncryptionKey string
 
