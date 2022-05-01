@@ -39,7 +39,6 @@ func (ekg *EncryptionKeyGenerator) GenerateKey(
 		threads,
 		keyLen,
 	)
-	fmt.Println(keyBytes)
 
 	return models.EncryptionKey(keyBytes), nil
 }
