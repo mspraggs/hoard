@@ -20,9 +20,8 @@ var errFileNotFound = errors.New("file not found")
 
 type FilestoreTestSuite struct {
 	suite.Suite
-	controller      *gomock.Controller
-	mockChecksummer *mocks.MockChecksummer
-	mockEncKeyGen   *mocks.MockEncryptionKeyGenerator
+	controller    *gomock.Controller
+	mockEncKeyGen *mocks.MockEncryptionKeyGenerator
 }
 
 type fakeFS map[string]*fakeFile
@@ -55,7 +54,6 @@ func TestFileStoreTestSuite(t *testing.T) {
 
 func (s *FilestoreTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
-	s.mockChecksummer = mocks.NewMockChecksummer(s.controller)
 	s.mockEncKeyGen = mocks.NewMockEncryptionKeyGenerator(s.controller)
 }
 
@@ -81,12 +79,10 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 
 		s.mockEncKeyGen.EXPECT().
 			GenerateKey(businessFileUpload).Return(encKey, nil)
-		s.mockChecksummer.EXPECT().
-			Algorithm().Return(models.ChecksumAlgorithmSHA256)
 
 		mockUploader := mocks.NewMockUploader(s.controller)
 		mockUploader.EXPECT().
-			Upload(context.Background(), fakeFile, s.mockChecksummer, fsFileUpload).
+			Upload(context.Background(), fakeFile, fsFileUpload).
 			Return(nil)
 
 		fakeUploaderSelector := func(f fs.File) (filestore.Uploader, error) {
@@ -165,8 +161,6 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 
 			s.mockEncKeyGen.EXPECT().
 				GenerateKey(businessFileUpload).Return(encKey, nil)
-			s.mockChecksummer.EXPECT().
-				Algorithm().Return(models.ChecksumAlgorithmSHA256)
 
 			fakeUploaderSelector := func(f fs.File) (filestore.Uploader, error) {
 				s.Require().Equal(fakeFile, f)
@@ -205,12 +199,10 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 
 			s.mockEncKeyGen.EXPECT().
 				GenerateKey(businessFileUpload).Return(encKey, nil)
-			s.mockChecksummer.EXPECT().
-				Algorithm().Return(models.ChecksumAlgorithmSHA256)
 
 			mockUploader := mocks.NewMockUploader(s.controller)
 			mockUploader.EXPECT().
-				Upload(context.Background(), fakeFile, s.mockChecksummer, fsFileUpload).
+				Upload(context.Background(), fakeFile, fsFileUpload).
 				Return(expectedErr)
 
 			fakeUploaderSelector := func(f fs.File) (filestore.Uploader, error) {
@@ -237,6 +229,6 @@ func (s *FilestoreTestSuite) newStore(
 ) *filestore.FileStore {
 
 	return filestore.New(
-		fs, uploaderSelector, s.mockEncKeyGen, s.mockChecksummer,
+		fs, uploaderSelector, models.ChecksumAlgorithmSHA256, s.mockEncKeyGen,
 	)
 }

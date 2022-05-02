@@ -39,8 +39,6 @@ const (
 	ChecksumAlgorithmSHA256 ChecksumAlgorithm = 1
 )
 
-type Checksum string
-
 type ChangeType int
 
 const (

@@ -3,7 +3,6 @@ package filestore
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
 
 	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
@@ -16,11 +15,6 @@ type BucketSelector interface {
 	SelectBucket(fileUpload *models.FileUpload) string
 }
 
-type Checksummer interface {
-	Algorithm() models.ChecksumAlgorithm
-	Checksum(reader io.Reader) (models.Checksum, error)
-}
-
 type EncryptionKeyGenerator interface {
 	GenerateKey(fileUpload *models.FileUpload) (models.EncryptionKey, error)
 }
@@ -29,7 +23,6 @@ type Uploader interface {
 	Upload(
 		ctx context.Context,
 		file fs.File,
-		cs Checksummer,
 		upload *fsmodels.FileUpload,
 	) error
 }
@@ -39,18 +32,18 @@ type UploaderSelector func(file fs.File) (Uploader, error)
 type FileStore struct {
 	fs               fs.FS
 	ekg              EncryptionKeyGenerator
-	cs               Checksummer
+	csAlg            models.ChecksumAlgorithm
 	uploaderSelector UploaderSelector
 }
 
 func New(
 	fs fs.FS,
 	uploaderSelector UploaderSelector,
+	csAlg models.ChecksumAlgorithm,
 	ekg EncryptionKeyGenerator,
-	cs Checksummer,
 ) *FileStore {
 
-	return &FileStore{fs, ekg, cs, uploaderSelector}
+	return &FileStore{fs, ekg, csAlg, uploaderSelector}
 }
 
 func (s *FileStore) StoreFileUpload(
@@ -68,9 +61,8 @@ func (s *FileStore) StoreFileUpload(
 	if err != nil {
 		return nil, err
 	}
-	csAlg := s.cs.Algorithm()
 	upload := fsmodels.NewFileUploadFromBusiness(
-		fileUpload.EncryptionAlgorithm, encKey, csAlg, fileUpload,
+		fileUpload.EncryptionAlgorithm, encKey, s.csAlg, fileUpload,
 	)
 
 	uploader, err := s.uploaderSelector(file)
@@ -78,7 +70,7 @@ func (s *FileStore) StoreFileUpload(
 		return nil, fmt.Errorf("unable to select file uploader: %w", err)
 	}
 
-	if err := uploader.Upload(ctx, file, s.cs, upload); err != nil {
+	if err := uploader.Upload(ctx, file, upload); err != nil {
 		return nil, fmt.Errorf("unable to upload file: %w", err)
 	}
 

@@ -18,34 +18,12 @@ import (
 	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
 	"github.com/mspraggs/hoard/internal/filestore/uploader"
 	"github.com/mspraggs/hoard/internal/filestore/uploader/mocks"
-	"github.com/mspraggs/hoard/internal/models"
 )
 
 type MultiUploaderTestSuite struct {
 	suite.Suite
-	controller      *gomock.Controller
-	mockClient      *mocks.MockMultiClient
-	mockChecksummer *mocks.MockChecksummer
-}
-
-type fakeReader struct {
-	current int
-	max     int
-	err     error
-}
-
-func (r *fakeReader) Read(bs []byte) (int, error) {
-	if r.err != nil {
-		return 1, r.err
-	}
-	for i := range bs {
-		if r.current >= r.max {
-			return i, nil
-		}
-		bs[i] = byte(r.current)
-		r.current++
-	}
-	return len(bs), nil
+	controller *gomock.Controller
+	mockClient *mocks.MockMultiClient
 }
 
 func TestMultiUploaderTestSuite(t *testing.T) {
@@ -55,7 +33,6 @@ func TestMultiUploaderTestSuite(t *testing.T) {
 func (s *MultiUploaderTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
 	s.mockClient = mocks.NewMockMultiClient(s.controller)
-	s.mockChecksummer = mocks.NewMockChecksummer(s.controller)
 }
 
 func (s *MultiUploaderTestSuite) TestUpload() {
@@ -66,7 +43,6 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
 	}
 	body := []byte{0, 1, 2, 3, 4, 5, 6, 7}
-	checksums := []string{"one", "two"}
 	maxChunkSize := 5
 
 	createMultipartUploadInput := &s3.CreateMultipartUploadInput{
@@ -88,31 +64,23 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 		UploadId:             &uploadID,
 	}
 
-	s.Run("reads and uploads file with checksum", func() {
-		reader := &fakeReader{0, 8, nil}
+	s.Run("reads and uploads file", func() {
+		reader := bytes.NewReader(body)
 		uploadPartInputs := []*s3.UploadPartInput{
-			newTestUploadPartInput(upload, uploadID, body[:maxChunkSize], checksums[0]),
-			newTestUploadPartInput(upload, uploadID, body[maxChunkSize:], checksums[1]),
+			newTestUploadPartInput(upload, uploadID, body[:maxChunkSize]),
+			newTestUploadPartInput(upload, uploadID, body[maxChunkSize:]),
 		}
 
 		s.mockClient.EXPECT().
 			CreateMultipartUpload(context.Background(), createMultipartUploadInput).
 			Return(createMultipartUploadOutput, nil)
 		gomock.InOrder(
-			s.mockChecksummer.EXPECT().
-				Checksum(bytes.NewReader(body[:maxChunkSize])).
-				Return(models.Checksum(checksums[0]), nil),
-			s.mockChecksummer.EXPECT().
-				Checksum(bytes.NewReader(body[maxChunkSize:])).
-				Return(models.Checksum(checksums[1]), nil),
-		)
-		gomock.InOrder(
 			s.mockClient.EXPECT().
 				UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInputs[0])).
-				Return(nil, nil),
+				DoAndReturn(s.makeDoUploadPart(body[:maxChunkSize], maxChunkSize)),
 			s.mockClient.EXPECT().
 				UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInputs[1])).
-				Return(nil, nil),
+				DoAndReturn(s.makeDoUploadPart(body[maxChunkSize:], maxChunkSize)),
 		)
 		s.mockClient.EXPECT().
 			CompleteMultipartUpload(context.Background(), completeUploadInput).
@@ -120,7 +88,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 
 		uploader := uploader.NewMultiUploader(int64(maxChunkSize), s.mockClient)
 
-		err := uploader.Upload(context.Background(), reader, s.mockChecksummer, upload)
+		err := uploader.Upload(context.Background(), reader, upload)
 
 		s.NoError(err)
 	})
@@ -135,91 +103,49 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 
 			uploader := uploader.NewMultiUploader(0, s.mockClient)
 
-			err := uploader.Upload(context.Background(), nil, s.mockChecksummer, upload)
-
-			s.ErrorIs(err, expectedErr)
-		})
-		s.Run("from reader", func() {
-			expectedErr := errors.New("oh no")
-			reader := &fakeReader{0, 8, expectedErr}
-
-			s.mockClient.EXPECT().
-				CreateMultipartUpload(context.Background(), createMultipartUploadInput).
-				Return(createMultipartUploadOutput, nil)
-
-			uploader := uploader.NewMultiUploader(int64(maxChunkSize), s.mockClient)
-
-			err := uploader.Upload(context.Background(), reader, s.mockChecksummer, upload)
-
-			s.ErrorIs(err, expectedErr)
-		})
-		s.Run("from checksum", func() {
-			expectedErr := errors.New("oh no")
-			reader := &fakeReader{0, 8, nil}
-
-			s.mockClient.EXPECT().
-				CreateMultipartUpload(context.Background(), createMultipartUploadInput).
-				Return(createMultipartUploadOutput, nil)
-			s.mockChecksummer.EXPECT().
-				Checksum(bytes.NewReader(body[:maxChunkSize])).
-				Return(models.Checksum(""), expectedErr)
-
-			uploader := uploader.NewMultiUploader(int64(maxChunkSize), s.mockClient)
-
-			err := uploader.Upload(context.Background(), reader, s.mockChecksummer, upload)
+			err := uploader.Upload(context.Background(), nil, upload)
 
 			s.ErrorIs(err, expectedErr)
 		})
 		s.Run("from upload part", func() {
 			expectedErr := errors.New("oh no")
-			reader := &fakeReader{0, 8, nil}
+			reader := bytes.NewReader(body)
 
 			uploadPartInput := newTestUploadPartInput(
-				upload, uploadID, body[:maxChunkSize], checksums[0],
+				upload, uploadID, body[:maxChunkSize],
 			)
 
 			s.mockClient.EXPECT().
 				CreateMultipartUpload(context.Background(), createMultipartUploadInput).
 				Return(createMultipartUploadOutput, nil)
-			s.mockChecksummer.EXPECT().
-				Checksum(bytes.NewReader(body[:maxChunkSize])).
-				Return(models.Checksum(checksums[0]), nil)
 			s.mockClient.EXPECT().
 				UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInput)).
 				Return(nil, expectedErr)
 
 			uploader := uploader.NewMultiUploader(int64(maxChunkSize), s.mockClient)
 
-			err := uploader.Upload(context.Background(), reader, s.mockChecksummer, upload)
+			err := uploader.Upload(context.Background(), reader, upload)
 
 			s.ErrorIs(err, expectedErr)
 		})
 		s.Run("from complete multipart upload", func() {
 			expectedErr := errors.New("oh no")
-			reader := &fakeReader{0, 8, nil}
+			reader := bytes.NewReader(body)
 			uploadPartInputs := []*s3.UploadPartInput{
-				newTestUploadPartInput(upload, uploadID, body[:maxChunkSize], checksums[0]),
-				newTestUploadPartInput(upload, uploadID, body[maxChunkSize:], checksums[1]),
+				newTestUploadPartInput(upload, uploadID, body[:maxChunkSize]),
+				newTestUploadPartInput(upload, uploadID, body[maxChunkSize:]),
 			}
 
 			s.mockClient.EXPECT().
 				CreateMultipartUpload(context.Background(), createMultipartUploadInput).
 				Return(createMultipartUploadOutput, nil)
 			gomock.InOrder(
-				s.mockChecksummer.EXPECT().
-					Checksum(bytes.NewReader(body[:maxChunkSize])).
-					Return(models.Checksum(checksums[0]), nil),
-				s.mockChecksummer.EXPECT().
-					Checksum(bytes.NewReader(body[maxChunkSize:])).
-					Return(models.Checksum(checksums[1]), nil),
-			)
-			gomock.InOrder(
 				s.mockClient.EXPECT().
 					UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInputs[0])).
-					Return(nil, nil),
+					DoAndReturn(s.makeDoUploadPart(body[:maxChunkSize], maxChunkSize)),
 				s.mockClient.EXPECT().
 					UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInputs[1])).
-					Return(nil, nil),
+					DoAndReturn(s.makeDoUploadPart(body[maxChunkSize:], maxChunkSize)),
 			)
 			s.mockClient.EXPECT().
 				CompleteMultipartUpload(context.Background(), completeUploadInput).
@@ -227,18 +153,41 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 
 			uploader := uploader.NewMultiUploader(int64(maxChunkSize), s.mockClient)
 
-			err := uploader.Upload(context.Background(), reader, s.mockChecksummer, upload)
+			err := uploader.Upload(context.Background(), reader, upload)
 
 			s.ErrorIs(err, expectedErr)
 		})
 	})
 }
 
+func (s *MultiUploaderTestSuite) makeDoUploadPart(
+	expectedBytes []byte,
+	maxChunkSize int,
+) func(context.Context, *s3.UploadPartInput, ...func(*s3.Options)) (*s3.UploadPartOutput, error) {
+
+	return func(
+		ctx context.Context,
+		upi *s3.UploadPartInput,
+		optFns ...func(*s3.Options),
+	) (*s3.UploadPartOutput, error) {
+
+		bs := make([]byte, maxChunkSize)
+		n, err := upi.Body.Read(bs)
+		s.Require().Equal(expectedBytes, bs[:n])
+		if err == io.EOF {
+			err = nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+}
+
 func newTestUploadPartInput(
 	upload *fsmodels.FileUpload,
 	uploadID string,
 	body []byte,
-	checksum string,
 ) *s3.UploadPartInput {
 
 	empty := ""
@@ -249,7 +198,6 @@ func newTestUploadPartInput(
 		SSECustomerKey:       &empty,
 		SSECustomerAlgorithm: &empty,
 		ChecksumAlgorithm:    upload.ChecksumAlgorithm,
-		ChecksumSHA256:       &checksum,
 		Body:                 bytes.NewReader(body),
 	}
 }
@@ -265,20 +213,6 @@ func newUploadPartInputMatcher(expected *s3.UploadPartInput) *uploadPartInputMat
 func (m *uploadPartInputMatcher) Matches(actual interface{}) bool {
 	actualInput, ok := actual.(*s3.UploadPartInput)
 	if !ok {
-		return false
-	}
-
-	actualBody, err := io.ReadAll(actualInput.Body)
-	if err != nil {
-		return false
-	}
-
-	expectedBody, err := io.ReadAll(m.expected.Body)
-	if err != nil {
-		return false
-	}
-
-	if bytes.Compare(expectedBody, actualBody) != 0 {
 		return false
 	}
 

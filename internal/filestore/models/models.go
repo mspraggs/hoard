@@ -163,23 +163,3 @@ func (fu *FileUpload) ToPutObjectInput(
 
 	return input
 }
-
-func (upi *UploadPartInput) AttachChecksum(checksum models.Checksum) error {
-	switch upi.ChecksumAlgorithm {
-	case types.ChecksumAlgorithmSha256:
-		upi.ChecksumSHA256 = (*string)(&checksum)
-	default:
-		return fmt.Errorf("unknown checksum algorithm: %s", upi.ChecksumAlgorithm)
-	}
-	return nil
-}
-
-func (poi *PutObjectInput) AttachChecksum(checksum models.Checksum) error {
-	switch poi.ChecksumAlgorithm {
-	case types.ChecksumAlgorithmSha256:
-		poi.ChecksumSHA256 = (*string)(&checksum)
-	default:
-		return fmt.Errorf("unknown checksum algorithm: %s", poi.ChecksumAlgorithm)
-	}
-	return nil
-}

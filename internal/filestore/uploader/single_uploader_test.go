@@ -18,20 +18,12 @@ import (
 	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
 	"github.com/mspraggs/hoard/internal/filestore/uploader"
 	"github.com/mspraggs/hoard/internal/filestore/uploader/mocks"
-	"github.com/mspraggs/hoard/internal/models"
 )
 
 type SingleUploaderTestSuite struct {
 	suite.Suite
-	controller      *gomock.Controller
-	mockClient      *mocks.MockSingleClient
-	mockChecksummer *mocks.MockChecksummer
-}
-
-type mockReader func([]byte) (int, error)
-
-func (f mockReader) Read(b []byte) (int, error) {
-	return f(b)
+	controller *gomock.Controller
+	mockClient *mocks.MockSingleClient
 }
 
 func TestSingleUploaderTestSuite(t *testing.T) {
@@ -41,91 +33,48 @@ func TestSingleUploaderTestSuite(t *testing.T) {
 func (s *SingleUploaderTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
 	s.mockClient = mocks.NewMockSingleClient(s.controller)
-	s.mockChecksummer = mocks.NewMockChecksummer(s.controller)
 }
 
 func (s *SingleUploaderTestSuite) TestUpload() {
 	body := []byte{0, 1, 2, 3}
-	checksum := "5678"
 	upload := &fsmodels.FileUpload{
 		Key:               "foo",
 		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
 	}
 
-	reader := func(bs []byte) (int, error) {
-		for i, b := range body {
-			bs[i] = b
-		}
-		return len(body), io.EOF
-	}
-
 	s.Run("reads and uploads file with checksum", func() {
-		putObjectInput := newTestPutObjectInput(upload, body, checksum)
+		putObjectInput := newTestPutObjectInput(upload, body)
 
-		s.mockChecksummer.EXPECT().
-			Checksum(bytes.NewReader(body)).Return(models.Checksum(checksum), nil)
 		s.mockClient.EXPECT().
 			PutObject(context.Background(), newPutObjectInputMatcher(putObjectInput)).
 			Return(nil, nil)
 
 		uploader := uploader.NewSingleUploader(s.mockClient)
 
-		err := uploader.Upload(context.Background(), mockReader(reader), s.mockChecksummer, upload)
+		err := uploader.Upload(context.Background(), bytes.NewReader(body), upload)
 
 		s.Require().NoError(err)
 	})
 
 	s.Run("wraps and returns error", func() {
-		s.Run("from reader", func() {
-			expectedErr := errors.New("fail")
-
-			reader := func(bs []byte) (int, error) {
-				return 0, expectedErr
-			}
-
-			uploader := uploader.NewSingleUploader(s.mockClient)
-
-			err := uploader.Upload(context.Background(), mockReader(reader), nil, nil)
-
-			s.ErrorIs(err, expectedErr)
-		})
-		s.Run("from checksummer", func() {
-			expectedErr := errors.New("fail")
-
-			s.mockChecksummer.EXPECT().
-				Checksum(bytes.NewReader(body)).Return(models.Checksum(""), expectedErr)
-
-			uploader := uploader.NewSingleUploader(s.mockClient)
-
-			err := uploader.Upload(context.Background(), mockReader(reader), s.mockChecksummer, nil)
-
-			s.ErrorIs(err, expectedErr)
-		})
 		s.Run("from put object", func() {
 			expectedErr := errors.New("fail")
-			putObjectInput := newTestPutObjectInput(upload, body, checksum)
+			putObjectInput := newTestPutObjectInput(upload, body)
 
-			s.mockChecksummer.EXPECT().
-				Checksum(bytes.NewReader(body)).Return(models.Checksum(checksum), nil)
 			s.mockClient.EXPECT().
 				PutObject(context.Background(), newPutObjectInputMatcher(putObjectInput)).
 				Return(nil, expectedErr)
 
 			uploader := uploader.NewSingleUploader(s.mockClient)
 
-			err := uploader.Upload(context.Background(), mockReader(reader), s.mockChecksummer, upload)
+			err := uploader.Upload(context.Background(), bytes.NewReader(body), upload)
 
 			s.ErrorIs(err, expectedErr)
 		})
 	})
 }
 
-func newTestPutObjectInput(
-	upload *fsmodels.FileUpload,
-	body []byte,
-	checksum string,
-) *s3.PutObjectInput {
-
+func newTestPutObjectInput(upload *fsmodels.FileUpload, body []byte) *s3.PutObjectInput {
 	empty := ""
 	return &s3.PutObjectInput{
 		Key:                  &upload.Key,
@@ -133,8 +82,7 @@ func newTestPutObjectInput(
 		SSECustomerKey:       &empty,
 		SSECustomerAlgorithm: &empty,
 		ChecksumAlgorithm:    upload.ChecksumAlgorithm,
-		Body:                 bytes.NewBuffer(body),
-		ChecksumSHA256:       &checksum,
+		Body:                 bytes.NewReader(body),
 	}
 }
 

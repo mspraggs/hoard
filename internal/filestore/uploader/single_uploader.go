@@ -1,7 +1,6 @@
 package uploader
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -31,33 +30,16 @@ func NewSingleUploader(client SingleClient) *SingleUploader {
 func (u *SingleUploader) Upload(
 	ctx context.Context,
 	reader io.Reader,
-	cs Checksummer,
 	upload *fsmodels.FileUpload,
 ) error {
 
-	buffer, err := io.ReadAll(reader)
-	if err != nil {
-		return fmt.Errorf("unable to read file: %w", err)
-	}
-
-	bufferReader := bytes.NewReader(buffer)
-	checksum, err := cs.Checksum(bufferReader)
-	if err != nil {
-		return fmt.Errorf("unable to cacluate checksum: %w", err)
-	}
-
-	bufferReader.Reset(buffer)
-
 	setBody := func(i *fsmodels.PutObjectInput) {
-		i.Body = bufferReader
-	}
-	setChecksum := func(i *fsmodels.PutObjectInput) {
-		i.AttachChecksum(checksum)
+		i.Body = reader
 	}
 
-	input := upload.ToPutObjectInput(setBody, setChecksum)
+	input := upload.ToPutObjectInput(setBody)
 
-	_, err = u.client.PutObject(ctx, (*s3.PutObjectInput)(input))
+	_, err := u.client.PutObject(ctx, (*s3.PutObjectInput)(input))
 	if err != nil {
 		return fmt.Errorf("unable to put object: %w", err)
 	}

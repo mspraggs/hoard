@@ -1,12 +1,12 @@
 package uploader
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+
 	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
 )
 
@@ -42,7 +42,6 @@ func NewMultiUploader(chunkSize int64, client MultiClient) *MultiUploader {
 func (u *MultiUploader) Upload(
 	ctx context.Context,
 	reader io.Reader,
-	cs Checksummer,
 	upload *fsmodels.FileUpload,
 ) error {
 
@@ -52,11 +51,11 @@ func (u *MultiUploader) Upload(
 	}
 
 	for {
-		n, err := u.uploadPart(ctx, reader, cs, uploadID, upload)
-		if err != nil {
+		limitedReader := &io.LimitedReader{R: reader, N: u.maxChunkSize}
+		if err := u.uploadPart(ctx, limitedReader, uploadID, upload); err != nil {
 			return fmt.Errorf("unable to upload part: %w", err)
 		}
-		if n == 0 {
+		if limitedReader.N > 0 {
 			break
 		}
 	}
@@ -82,46 +81,25 @@ func (u *MultiUploader) createMultiPartUpload(
 func (u *MultiUploader) uploadPart(
 	ctx context.Context,
 	reader io.Reader,
-	cs Checksummer,
 	uploadID string,
 	upload *fsmodels.FileUpload,
-) (int, error) {
-
-	buffer := make([]byte, u.maxChunkSize)
-	n, err := reader.Read(buffer)
-	if n == 0 {
-		return 0, err
-	}
-	if err != nil && err != io.EOF {
-		return 0, fmt.Errorf("unable to read data: %w", err)
-	}
-
-	bufferReader := bytes.NewReader(buffer[:n])
-	checksum, err := cs.Checksum(bufferReader)
-	if err != nil {
-		return 0, fmt.Errorf("unable to calculate checksum: %w", err)
-	}
-
-	bufferReader.Reset(buffer[:n])
+) error {
 
 	setUploadID := func(i *fsmodels.UploadPartInput) {
 		i.UploadId = &uploadID
 	}
 	setBody := func(i *fsmodels.UploadPartInput) {
-		i.Body = bufferReader
-	}
-	setChecksum := func(i *fsmodels.UploadPartInput) {
-		i.AttachChecksum(checksum)
+		i.Body = reader
 	}
 
-	input := upload.ToUploadPartInput(setUploadID, setBody, setChecksum)
+	input := upload.ToUploadPartInput(setUploadID, setBody)
 
-	_, err = u.client.UploadPart(ctx, (*s3.UploadPartInput)(input))
+	_, err := u.client.UploadPart(ctx, (*s3.UploadPartInput)(input))
 	if err != nil {
-		return 0, fmt.Errorf("unable to upload multipart part: %w", err)
+		return fmt.Errorf("unable to upload multipart part: %w", err)
 	}
 
-	return n, nil
+	return nil
 }
 
 func (u *MultiUploader) closeMultiPartUpload(
