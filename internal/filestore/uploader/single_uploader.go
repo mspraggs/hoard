@@ -11,6 +11,8 @@ import (
 
 //go:generate mockgen -destination=./mocks/single_uploader.go -package=mocks -source=$GOFILE
 
+// SingleClient defines the interface required to upload a file to a storage
+// bucket in a single operation.
 type SingleClient interface {
 	PutObject(
 		ctx context.Context,
@@ -19,14 +21,20 @@ type SingleClient interface {
 	) (*s3.PutObjectOutput, error)
 }
 
+// SingleUploader encapsulates the logic to upload a file to a storage bucket in
+// a single operation.
 type SingleUploader struct {
 	client SingleClient
 }
 
+// NewSingleUploader instantiates a SingleUploader instance with the provided
+// client.
 func NewSingleUploader(client SingleClient) *SingleUploader {
 	return &SingleUploader{client}
 }
 
+// Upload uploads the contents of the supplied reader to the relevant storage
+// bucket.
 func (u *SingleUploader) Upload(
 	ctx context.Context,
 	reader io.Reader,

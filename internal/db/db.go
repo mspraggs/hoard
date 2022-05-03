@@ -10,14 +10,19 @@ import (
 	"github.com/mspraggs/hoard/internal/models"
 )
 
+// Store encapsulates the logic for interacting with a database transaction.
 type Store struct {
 	tx *goqu.TxDatabase
 }
 
+// NewStore instantiates a new Store instance with the provided database
+// transaction.
 func NewStore(tx *goqu.TxDatabase) *Store {
 	return &Store{tx}
 }
 
+// GetFileUploadByChangeRequestID fetches a file upload and change type from the
+// database using the provided request ID.
 func (s *Store) GetFileUploadByChangeRequestID(
 	ctx context.Context,
 	requestID string,
@@ -40,6 +45,8 @@ func (s *Store) GetFileUploadByChangeRequestID(
 	return fileUpload, changeType, nil
 }
 
+// InsertFileUpload inserts a new file upload into the database. A row is also
+// added to the append-only history table for this resource.
 func (s *Store) InsertFileUpload(
 	ctx context.Context,
 	requestID string,
@@ -63,6 +70,8 @@ func (s *Store) InsertFileUpload(
 	return fileUpload, nil
 }
 
+// UpdateFileUpload updates an existing file upload in the database. A row is
+// also added to the append-only history table for this resource.
 func (s *Store) UpdateFileUpload(
 	ctx context.Context,
 	requestID string,

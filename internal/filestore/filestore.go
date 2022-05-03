@@ -15,10 +15,13 @@ type BucketSelector interface {
 	SelectBucket(fileUpload *models.FileUpload) string
 }
 
+// EncryptionKeyGenerator defines the interface required to generate an
+// encryption key for the provided file upload.
 type EncryptionKeyGenerator interface {
 	GenerateKey(fileUpload *models.FileUpload) (models.EncryptionKey, error)
 }
 
+// Uploader defines the interface required to upload a file upload.
 type Uploader interface {
 	Upload(
 		ctx context.Context,
@@ -27,8 +30,12 @@ type Uploader interface {
 	) error
 }
 
+// UploaderSelector defines how a particular file should lmap to a particular
+// Uploader instance.
 type UploaderSelector func(file fs.File) (Uploader, error)
 
+// FileStore encapsulates the logic required to store a file in a storage
+// bucket.
 type FileStore struct {
 	fs               fs.FS
 	ekg              EncryptionKeyGenerator
@@ -36,6 +43,8 @@ type FileStore struct {
 	uploaderSelector UploaderSelector
 }
 
+// New instantiates a new file store with provided filesystem, uploader
+// selector, checksum algorithm and encryption key generator.
 func New(
 	fs fs.FS,
 	uploaderSelector UploaderSelector,
@@ -46,6 +55,8 @@ func New(
 	return &FileStore{fs, ekg, csAlg, uploaderSelector}
 }
 
+// StoreFileUpload loads a file, generates an encryption key from that file and
+// uploads it to the file bucket using the relevant Uploader instance.
 func (s *FileStore) StoreFileUpload(
 	ctx context.Context,
 	fileUpload *models.FileUpload,

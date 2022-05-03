@@ -12,6 +12,8 @@ import (
 
 //go:generate mockgen -destination=./mocks/multi_uploader.go -package=mocks -source=$GOFILE
 
+// MultiClient defines the interface required to upload a file in multiple
+// parts.
 type MultiClient interface {
 	CreateMultipartUpload(
 		ctx context.Context,
@@ -30,15 +32,21 @@ type MultiClient interface {
 	) (*s3.CompleteMultipartUploadOutput, error)
 }
 
+// MultiUploader encapsulates the logic to upload a particular file upload to a
+// storage bucket in multiple parts.
 type MultiUploader struct {
 	maxChunkSize int64
 	client       MultiClient
 }
 
+// NewMultiUploader instantiates a new MultiUploader instance using the provided
+// chunk size and client.
 func NewMultiUploader(chunkSize int64, client MultiClient) *MultiUploader {
 	return &MultiUploader{chunkSize, client}
 }
 
+// Upload uploads the contents of the provided reader to the relevant bucket in
+// multiple parts.
 func (u *MultiUploader) Upload(
 	ctx context.Context,
 	reader io.Reader,

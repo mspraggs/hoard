@@ -14,10 +14,13 @@ import (
 
 //go:generate mockgen -destination=./mocks/fileregistry.go -package=mocks -source=$GOFILE
 
+// Clock defines the interface required to fetch the current time.
 type Clock interface {
 	Now() time.Time
 }
 
+// Store defines the interface required to interact with the file registry
+// storage backend.
 type Store interface {
 	GetFileUploadByChangeRequestID(
 		ctx context.Context,
@@ -35,21 +38,34 @@ type Store interface {
 	) (*models.FileUpload, error)
 }
 
+// TxnFunc defines the closure expected by the InTransactioner interface when
+// handling a database transaction.
 type TxnFunc func(context.Context, Store) (interface{}, error)
 
+// InTransactioner defines the interface required to interact with a database
+// within a transaction.
 type InTransactioner interface {
 	InTransaction(ctx context.Context, fn TxnFunc) (interface{}, error)
 }
 
+// FileRegistry encapsulates the logic required to interact with a register of
+// file uploads. The registry maintains a record of details associated with a
+// file upload, including a file version string and the timestamp at which the
+// file was uploaded.
 type FileRegistry struct {
 	clock   Clock
 	inTxner InTransactioner
 }
 
+// New instantiates a new FileRegistry using the provided Clock and
+// InTransactioner instances.
 func New(clock Clock, inTxner InTransactioner) *FileRegistry {
 	return &FileRegistry{clock, inTxner}
 }
 
+// RegisterFileUpload creates the file upload in the registry storage backend
+// using an idempotency key derived from the local file path and the file
+// version string.
 func (r *FileRegistry) RegisterFileUpload(
 	ctx context.Context,
 	fileUpload *models.FileUpload,
@@ -89,6 +105,8 @@ func (r *FileRegistry) RegisterFileUpload(
 	return createdFileUpload, nil
 }
 
+// MakeFileUploadUploaded marks a file upload as uploaded using the store held
+// by the file registry.
 func (r *FileRegistry) MarkFileUploadUploaded(
 	ctx context.Context,
 	fileUpload *models.FileUpload,

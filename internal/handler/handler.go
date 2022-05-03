@@ -9,6 +9,8 @@ import (
 
 //go:generate mockgen -destination=./mocks/handler.go -package=mocks -source=$GOFILE
 
+// FileRegistry specifies the interface required to register and update the
+// registry of uploaded files.
 type FileRegistry interface {
 	RegisterFileUpload(
 		ctx context.Context,
@@ -20,19 +22,26 @@ type FileRegistry interface {
 	) (*models.FileUpload, error)
 }
 
+// FileStore specifies the interface required to upload files.
 type FileStore interface {
 	StoreFileUpload(ctx context.Context, FileUpload *models.FileUpload) (*models.FileUpload, error)
 }
 
+// Handler encapsulates the logic required to register a file upload and store
+// it in the file store.
 type Handler struct {
 	fs   FileStore
 	freg FileRegistry
 }
 
+// New instantiates a new Handler instance with provided file store and
+// registry.
 func New(fs FileStore, freg FileRegistry) *Handler {
 	return &Handler{fs, freg}
 }
 
+// HandleFileUpload registers the provided file upload in the file registry and
+// uploads the file to the file store.
 func (h *Handler) HandleFileUpload(
 	ctx context.Context,
 	fileUpload *models.FileUpload,
