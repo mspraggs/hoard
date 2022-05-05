@@ -23,36 +23,32 @@ type EncryptionKeyGenerator interface {
 
 // Uploader defines the interface required to upload a file upload.
 type Uploader interface {
-	Upload(
-		ctx context.Context,
-		file fs.File,
-		upload *fsmodels.FileUpload,
-	) error
+	Upload(ctx context.Context, upload *fsmodels.FileUpload) error
 }
 
-// UploaderSelector defines how a particular file should lmap to a particular
-// Uploader instance.
-type UploaderSelector func(file fs.File) (Uploader, error)
+// UploaderConstructor defines how an Uploader instance should be constructed
+// from a file object.
+type UploaderConstructor func(file fs.File) (Uploader, error)
 
 // FileStore encapsulates the logic required to store a file in a storage
 // bucket.
 type FileStore struct {
-	fs               fs.FS
-	ekg              EncryptionKeyGenerator
-	csAlg            models.ChecksumAlgorithm
-	uploaderSelector UploaderSelector
+	fs                  fs.FS
+	ekg                 EncryptionKeyGenerator
+	csAlg               models.ChecksumAlgorithm
+	uploaderConstructor UploaderConstructor
 }
 
 // New instantiates a new file store with provided filesystem, uploader
 // selector, checksum algorithm and encryption key generator.
 func New(
 	fs fs.FS,
-	uploaderSelector UploaderSelector,
+	uploaderConstructor UploaderConstructor,
 	csAlg models.ChecksumAlgorithm,
 	ekg EncryptionKeyGenerator,
 ) *FileStore {
 
-	return &FileStore{fs, ekg, csAlg, uploaderSelector}
+	return &FileStore{fs, ekg, csAlg, uploaderConstructor}
 }
 
 // StoreFileUpload loads a file, generates an encryption key from that file and
@@ -73,15 +69,15 @@ func (s *FileStore) StoreFileUpload(
 		return nil, err
 	}
 	upload := fsmodels.NewFileUploadFromBusiness(
-		fileUpload.EncryptionAlgorithm, encKey, s.csAlg, fileUpload,
+		fileUpload.EncryptionAlgorithm, encKey, s.csAlg, fileUpload, file,
 	)
 
-	uploader, err := s.uploaderSelector(file)
+	uploader, err := s.uploaderConstructor(file)
 	if err != nil {
 		return nil, fmt.Errorf("unable to select file uploader: %w", err)
 	}
 
-	if err := uploader.Upload(ctx, file, upload); err != nil {
+	if err := uploader.Upload(ctx, upload); err != nil {
 		return nil, fmt.Errorf("unable to upload file: %w", err)
 	}
 

@@ -63,6 +63,9 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 		path := "/path/to/file"
 		encKey := models.EncryptionKey([]byte{1, 2, 3})
 
+		fakeFile := &fakeFile{}
+		fakeFileSystem := fakeFS{path: fakeFile}
+
 		businessFileUpload := &models.FileUpload{
 			ID:        fileID,
 			LocalPath: path,
@@ -72,25 +75,23 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			EncryptionKey:       fsmodels.EncryptionKey([]byte{1, 2, 3}),
 			EncryptionAlgorithm: types.ServerSideEncryptionAes256,
 			ChecksumAlgorithm:   types.ChecksumAlgorithmSha256,
+			Body:                fakeFile,
 		}
-
-		fakeFile := &fakeFile{}
-		fakeFileSystem := fakeFS{path: fakeFile}
 
 		s.mockEncKeyGen.EXPECT().
 			GenerateKey(businessFileUpload).Return(encKey, nil)
 
 		mockUploader := mocks.NewMockUploader(s.controller)
 		mockUploader.EXPECT().
-			Upload(context.Background(), fakeFile, fsFileUpload).
+			Upload(context.Background(), fsFileUpload).
 			Return(nil)
 
-		fakeUploaderSelector := func(f fs.File) (filestore.Uploader, error) {
+		fakeUploaderConstructor := func(f fs.File) (filestore.Uploader, error) {
 			s.Require().Equal(fakeFile, f)
 			return mockUploader, nil
 		}
 
-		store := s.newStore(fakeFileSystem, fakeUploaderSelector)
+		store := s.newStore(fakeFileSystem, fakeUploaderConstructor)
 
 		uploadedFileUpload, err := store.StoreFileUpload(context.Background(), businessFileUpload)
 
@@ -162,12 +163,12 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			s.mockEncKeyGen.EXPECT().
 				GenerateKey(businessFileUpload).Return(encKey, nil)
 
-			fakeUploaderSelector := func(f fs.File) (filestore.Uploader, error) {
+			fakeUploaderConstructor := func(f fs.File) (filestore.Uploader, error) {
 				s.Require().Equal(fakeFile, f)
 				return nil, expectedErr
 			}
 
-			store := s.newStore(fakeFileSystem, fakeUploaderSelector)
+			store := s.newStore(fakeFileSystem, fakeUploaderConstructor)
 
 			uploadedFileUpload, err := store.StoreFileUpload(
 				context.Background(),
@@ -183,6 +184,9 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			path := "/path/to/file"
 			encKey := models.EncryptionKey([]byte{1, 2, 3})
 
+			fakeFile := &fakeFile{}
+			fakeFileSystem := fakeFS{path: fakeFile}
+
 			businessFileUpload := &models.FileUpload{
 				ID:        fileID,
 				LocalPath: path,
@@ -192,25 +196,23 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 				EncryptionKey:       fsmodels.EncryptionKey([]byte{1, 2, 3}),
 				EncryptionAlgorithm: types.ServerSideEncryptionAes256,
 				ChecksumAlgorithm:   types.ChecksumAlgorithmSha256,
+				Body:                fakeFile,
 			}
-
-			fakeFile := &fakeFile{}
-			fakeFileSystem := fakeFS{path: fakeFile}
 
 			s.mockEncKeyGen.EXPECT().
 				GenerateKey(businessFileUpload).Return(encKey, nil)
 
 			mockUploader := mocks.NewMockUploader(s.controller)
 			mockUploader.EXPECT().
-				Upload(context.Background(), fakeFile, fsFileUpload).
+				Upload(context.Background(), fsFileUpload).
 				Return(expectedErr)
 
-			fakeUploaderSelector := func(f fs.File) (filestore.Uploader, error) {
+			fakeUploaderConstructor := func(f fs.File) (filestore.Uploader, error) {
 				s.Require().Equal(fakeFile, f)
 				return mockUploader, nil
 			}
 
-			store := s.newStore(fakeFileSystem, fakeUploaderSelector)
+			store := s.newStore(fakeFileSystem, fakeUploaderConstructor)
 
 			uploadedFileUpload, err := store.StoreFileUpload(
 				context.Background(),
@@ -225,10 +227,10 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 
 func (s *FilestoreTestSuite) newStore(
 	fs fs.FS,
-	uploaderSelector filestore.UploaderSelector,
+	uploaderConstructor filestore.UploaderConstructor,
 ) *filestore.FileStore {
 
 	return filestore.New(
-		fs, uploaderSelector, models.ChecksumAlgorithmSHA256, s.mockEncKeyGen,
+		fs, uploaderConstructor, models.ChecksumAlgorithmSHA256, s.mockEncKeyGen,
 	)
 }

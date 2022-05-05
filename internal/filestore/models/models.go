@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/base64"
+	"io"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -33,6 +34,7 @@ type FileUpload struct {
 	EncryptionAlgorithm EncryptionAlgorithm
 	ChecksumAlgorithm   ChecksumAlgorithm
 	StorageClass        StorageClass
+	Body                io.Reader
 }
 
 // CreateMultipartUploadInput defines the input data required to initiate a
@@ -104,6 +106,7 @@ func NewFileUploadFromBusiness(
 	encryptionKey models.EncryptionKey,
 	checksumAlgorithm models.ChecksumAlgorithm,
 	upload *models.FileUpload,
+	body io.Reader,
 ) *FileUpload {
 
 	return &FileUpload{
@@ -112,15 +115,13 @@ func NewFileUploadFromBusiness(
 		EncryptionKey:       NewEncryptionKeyFromBusiness(encryptionKey),
 		EncryptionAlgorithm: NewEncryptionAlgorithmFromBusiness(encryptionAlgorithm),
 		ChecksumAlgorithm:   NewChecksumAlgorithmFromBusiness(checksumAlgorithm),
+		Body:                body,
 	}
 }
 
 // ToCreateMultipartUploadInput constructs a multi-part upload creation input
-// from the file upload this method is called on, applying the various options
-// to the new input before returning it.
-func (fu *FileUpload) ToCreateMultipartUploadInput(
-	opts ...CreateMultipartUploadInputOption,
-) *CreateMultipartUploadInput {
+// from the file upload this method is called on.
+func (fu *FileUpload) ToCreateMultipartUploadInput() *CreateMultipartUploadInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	input := &CreateMultipartUploadInput{
@@ -132,64 +133,48 @@ func (fu *FileUpload) ToCreateMultipartUploadInput(
 		StorageClass:         fu.StorageClass,
 	}
 
-	for _, opt := range opts {
-		opt(input)
-	}
-
 	return input
 }
 
 // ToUploadPartInput constructs an UploadPartInput from the file upload this
-// method is called on, applying the various options to the new input before
-// returning it.
-func (fu *FileUpload) ToUploadPartInput(
-	opts ...UploadPartInputOption,
-) *UploadPartInput {
+// method is called on.
+func (fu *FileUpload) ToUploadPartInput(uploadID string, chunkSize int64) *UploadPartInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	input := &UploadPartInput{
+		UploadId:             &uploadID,
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
 		SSECustomerKey:       &sseKey,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 		ChecksumAlgorithm:    fu.ChecksumAlgorithm,
-	}
-
-	for _, opt := range opts {
-		opt(input)
+		Body:                 &io.LimitedReader{R: fu.Body, N: chunkSize},
 	}
 
 	return input
 }
 
 // ToCompleteMultipartUploadInput constructs an CompleteMultipartUploadInput
-// from the file upload this method is called on, applying the various options
-// to the new input before returning it.
+// from the file upload this method is called on.
 func (fu *FileUpload) ToCompleteMultipartUploadInput(
-	opts ...CompleteMultipartUploadInputOption,
+	uploadID string,
 ) *CompleteMultipartUploadInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	input := &CompleteMultipartUploadInput{
+		UploadId:             &uploadID,
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
 		SSECustomerKey:       &sseKey,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 	}
 
-	for _, opt := range opts {
-		opt(input)
-	}
-
 	return input
 }
 
 // ToPutObjectInput constructs an PutObjectInput from the file upload this
-// method is called on, applying the various options to the new input before
-// returning it.
-func (fu *FileUpload) ToPutObjectInput(
-	opts ...PutObjectInputOption,
-) *PutObjectInput {
+// method is called on.
+func (fu *FileUpload) ToPutObjectInput() *PutObjectInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	input := &PutObjectInput{
@@ -199,10 +184,7 @@ func (fu *FileUpload) ToPutObjectInput(
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 		ChecksumAlgorithm:    fu.ChecksumAlgorithm,
 		StorageClass:         fu.StorageClass,
-	}
-
-	for _, opt := range opts {
-		opt(input)
+		Body:                 fu.Body,
 	}
 
 	return input

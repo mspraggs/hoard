@@ -3,7 +3,6 @@ package uploader
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
@@ -36,20 +35,20 @@ type MultiClient interface {
 // storage bucket in multiple parts.
 type MultiUploader struct {
 	maxChunkSize int64
+	numChunks    int
 	client       MultiClient
 }
 
 // NewMultiUploader instantiates a new MultiUploader instance using the provided
-// chunk size and client.
-func NewMultiUploader(chunkSize int64, client MultiClient) *MultiUploader {
-	return &MultiUploader{chunkSize, client}
+// chunk size, number of chunks and client.
+func NewMultiUploader(chunkSize int64, numChunks int, client MultiClient) *MultiUploader {
+	return &MultiUploader{chunkSize, numChunks, client}
 }
 
-// Upload uploads the contents of the provided reader to the relevant bucket in
-// multiple parts.
+// Upload uploads the contents of the provided file upload to the relevant
+// bucket in multiple parts.
 func (u *MultiUploader) Upload(
 	ctx context.Context,
-	reader io.Reader,
 	upload *fsmodels.FileUpload,
 ) error {
 
@@ -58,13 +57,9 @@ func (u *MultiUploader) Upload(
 		return err
 	}
 
-	for {
-		limitedReader := &io.LimitedReader{R: reader, N: u.maxChunkSize}
-		if err := u.uploadPart(ctx, limitedReader, uploadID, upload); err != nil {
+	for i := 0; i < u.numChunks; i++ {
+		if err := u.uploadPart(ctx, uploadID, upload); err != nil {
 			return fmt.Errorf("unable to upload part: %w", err)
-		}
-		if limitedReader.N > 0 {
-			break
 		}
 	}
 
@@ -88,19 +83,11 @@ func (u *MultiUploader) createMultiPartUpload(
 
 func (u *MultiUploader) uploadPart(
 	ctx context.Context,
-	reader io.Reader,
 	uploadID string,
 	upload *fsmodels.FileUpload,
 ) error {
 
-	setUploadID := func(i *fsmodels.UploadPartInput) {
-		i.UploadId = &uploadID
-	}
-	setBody := func(i *fsmodels.UploadPartInput) {
-		i.Body = reader
-	}
-
-	input := upload.ToUploadPartInput(setUploadID, setBody)
+	input := upload.ToUploadPartInput(uploadID, u.maxChunkSize)
 
 	_, err := u.client.UploadPart(ctx, (*s3.UploadPartInput)(input))
 	if err != nil {
@@ -116,10 +103,7 @@ func (u *MultiUploader) closeMultiPartUpload(
 	upload *fsmodels.FileUpload,
 ) error {
 
-	setUploadID := func(i *fsmodels.CompleteMultipartUploadInput) {
-		i.UploadId = &uploadID
-	}
-	input := upload.ToCompleteMultipartUploadInput(setUploadID)
+	input := upload.ToCompleteMultipartUploadInput(uploadID)
 
 	_, err := u.client.CompleteMultipartUpload(ctx, (*s3.CompleteMultipartUploadInput)(input))
 	return err

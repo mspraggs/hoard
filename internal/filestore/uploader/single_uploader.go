@@ -3,7 +3,6 @@ package uploader
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
@@ -33,19 +32,14 @@ func NewSingleUploader(client SingleClient) *SingleUploader {
 	return &SingleUploader{client}
 }
 
-// Upload uploads the contents of the supplied reader to the relevant storage
-// bucket.
+// Upload uploads the contents of the supplied file upload to the relevant
+// storage bucket.
 func (u *SingleUploader) Upload(
 	ctx context.Context,
-	reader io.Reader,
 	upload *fsmodels.FileUpload,
 ) error {
 
-	setBody := func(i *fsmodels.PutObjectInput) {
-		i.Body = reader
-	}
-
-	input := upload.ToPutObjectInput(setBody)
+	input := upload.ToPutObjectInput()
 
 	_, err := u.client.PutObject(ctx, (*s3.PutObjectInput)(input))
 	if err != nil {

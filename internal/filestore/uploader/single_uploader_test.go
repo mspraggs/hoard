@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -37,12 +36,12 @@ func (s *SingleUploaderTestSuite) SetupTest() {
 
 func (s *SingleUploaderTestSuite) TestUpload() {
 	body := []byte{0, 1, 2, 3}
-	upload := &fsmodels.FileUpload{
-		Key:               "foo",
-		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
-	}
 
 	s.Run("reads and uploads file with checksum", func() {
+		upload := &fsmodels.FileUpload{
+			Key:  "foo",
+			Body: bytes.NewReader(body),
+		}
 		putObjectInput := newTestPutObjectInput(upload, body)
 
 		s.mockClient.EXPECT().
@@ -51,7 +50,7 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 
 		uploader := uploader.NewSingleUploader(s.mockClient)
 
-		err := uploader.Upload(context.Background(), bytes.NewReader(body), upload)
+		err := uploader.Upload(context.Background(), upload)
 
 		s.Require().NoError(err)
 	})
@@ -59,6 +58,10 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 	s.Run("wraps and returns error", func() {
 		s.Run("from put object", func() {
 			expectedErr := errors.New("fail")
+			upload := &fsmodels.FileUpload{
+				Key:  "foo",
+				Body: bytes.NewReader(body),
+			}
 			putObjectInput := newTestPutObjectInput(upload, body)
 
 			s.mockClient.EXPECT().
@@ -67,7 +70,7 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 
 			uploader := uploader.NewSingleUploader(s.mockClient)
 
-			err := uploader.Upload(context.Background(), bytes.NewReader(body), upload)
+			err := uploader.Upload(context.Background(), upload)
 
 			s.ErrorIs(err, expectedErr)
 		})

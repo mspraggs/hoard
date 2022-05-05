@@ -6,7 +6,6 @@ package mocks
 
 import (
 	context "context"
-	fs "io/fs"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -113,15 +112,15 @@ func (m *MockUploader) EXPECT() *MockUploaderMockRecorder {
 }
 
 // Upload mocks base method.
-func (m *MockUploader) Upload(ctx context.Context, file fs.File, upload *models.FileUpload) error {
+func (m *MockUploader) Upload(ctx context.Context, upload *models.FileUpload) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Upload", ctx, file, upload)
+	ret := m.ctrl.Call(m, "Upload", ctx, upload)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Upload indicates an expected call of Upload.
-func (mr *MockUploaderMockRecorder) Upload(ctx, file, upload interface{}) *gomock.Call {
+func (mr *MockUploaderMockRecorder) Upload(ctx, upload interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upload", reflect.TypeOf((*MockUploader)(nil).Upload), ctx, file, upload)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upload", reflect.TypeOf((*MockUploader)(nil).Upload), ctx, upload)
 }
