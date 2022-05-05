@@ -2,8 +2,6 @@ package fileregistry
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -48,19 +46,26 @@ type InTransactioner interface {
 	InTransaction(ctx context.Context, fn TxnFunc) (interface{}, error)
 }
 
+// RequestIDMaker defines the interface required to construct a request ID for a
+// given file upload.
+type RequestIDMaker interface {
+	MakeRequestID(fileUpload *models.FileUpload) (string, error)
+}
+
 // FileRegistry encapsulates the logic required to interact with a register of
 // file uploads. The registry maintains a record of details associated with a
 // file upload, including a file version string and the timestamp at which the
 // file was uploaded.
 type FileRegistry struct {
-	clock   Clock
-	inTxner InTransactioner
+	clock          Clock
+	inTxner        InTransactioner
+	requestIDMaker RequestIDMaker
 }
 
-// New instantiates a new FileRegistry using the provided Clock and
-// InTransactioner instances.
-func New(clock Clock, inTxner InTransactioner) *FileRegistry {
-	return &FileRegistry{clock, inTxner}
+// New instantiates a new FileRegistry using the provided Clock, InTransactioner
+// and RequestIDMaker instances.
+func New(clock Clock, inTxner InTransactioner, requestIDMaker RequestIDMaker) *FileRegistry {
+	return &FileRegistry{clock, inTxner, requestIDMaker}
 }
 
 // RegisterFileUpload creates the file upload in the registry storage backend
@@ -71,10 +76,10 @@ func (r *FileRegistry) RegisterFileUpload(
 	fileUpload *models.FileUpload,
 ) (*models.FileUpload, error) {
 
-	hash := hashString(
-		fileUpload.LocalPath + fileUpload.Version,
-	)
-	requestID := base64.StdEncoding.EncodeToString(hash)
+	requestID, err := r.requestIDMaker.MakeRequestID(fileUpload)
+	if err != nil {
+		return nil, fmt.Errorf("unable to make request ID: %w", err)
+	}
 
 	opaqueCreatedFileUpload, err := r.inTxner.InTransaction(
 		ctx,
@@ -138,10 +143,4 @@ func (r *FileRegistry) MarkFileUploadUploaded(
 	}
 
 	return opaqueUpdatedFileUpload.(*models.FileUpload), nil
-}
-
-func hashString(s string) []byte {
-	r := sha256.New()
-	r.Write([]byte(s))
-	return r.Sum(nil)
 }

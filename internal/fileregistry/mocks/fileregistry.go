@@ -157,3 +157,41 @@ func (mr *MockInTransactionerMockRecorder) InTransaction(ctx, fn interface{}) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InTransaction", reflect.TypeOf((*MockInTransactioner)(nil).InTransaction), ctx, fn)
 }
+
+// MockRequestIDMaker is a mock of RequestIDMaker interface.
+type MockRequestIDMaker struct {
+	ctrl     *gomock.Controller
+	recorder *MockRequestIDMakerMockRecorder
+}
+
+// MockRequestIDMakerMockRecorder is the mock recorder for MockRequestIDMaker.
+type MockRequestIDMakerMockRecorder struct {
+	mock *MockRequestIDMaker
+}
+
+// NewMockRequestIDMaker creates a new mock instance.
+func NewMockRequestIDMaker(ctrl *gomock.Controller) *MockRequestIDMaker {
+	mock := &MockRequestIDMaker{ctrl: ctrl}
+	mock.recorder = &MockRequestIDMakerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRequestIDMaker) EXPECT() *MockRequestIDMakerMockRecorder {
+	return m.recorder
+}
+
+// MakeRequestID mocks base method.
+func (m *MockRequestIDMaker) MakeRequestID(fileUpload *models.FileUpload) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MakeRequestID", fileUpload)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MakeRequestID indicates an expected call of MakeRequestID.
+func (mr *MockRequestIDMakerMockRecorder) MakeRequestID(fileUpload interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeRequestID", reflect.TypeOf((*MockRequestIDMaker)(nil).MakeRequestID), fileUpload)
+}

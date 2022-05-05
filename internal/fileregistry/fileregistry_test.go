@@ -20,6 +20,7 @@ type FileRegistryTestSuite struct {
 	controller          *gomock.Controller
 	mockStore           *mocks.MockStore
 	mockInTransactioner *mocks.MockInTransactioner
+	mockRequestIDMaker  *mocks.MockRequestIDMaker
 }
 
 type MockClock struct {
@@ -34,6 +35,7 @@ func (s *FileRegistryTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
 	s.mockStore = mocks.NewMockStore(s.controller)
 	s.mockInTransactioner = mocks.NewMockInTransactioner(s.controller)
+	s.mockRequestIDMaker = mocks.NewMockRequestIDMaker(s.controller)
 }
 
 func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
@@ -53,6 +55,8 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 	s.Run("inserts file upload into store", func() {
 		clock := &MockClock{}
 
+		s.mockRequestIDMaker.EXPECT().
+			MakeRequestID(inputFileUpload).Return(expectedRequestID, nil)
 		s.mockInTransactioner.EXPECT().
 			InTransaction(context.Background(), gomock.Any()).
 			DoAndReturn(s.mockInTransaction)
@@ -63,7 +67,7 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 			InsertFileUpload(context.Background(), expectedRequestID, inputFileUpload).
 			Return(storedFileUpload, nil)
 
-		registry := fileregistry.New(clock, s.mockInTransactioner)
+		registry := fileregistry.New(clock, s.mockInTransactioner, s.mockRequestIDMaker)
 
 		registeredFileUpload, err := registry.RegisterFileUpload(
 			context.Background(),
@@ -78,6 +82,8 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 		s.Run("and returns existing file upload for matching change type", func() {
 			clock := &MockClock{}
 
+			s.mockRequestIDMaker.EXPECT().
+				MakeRequestID(inputFileUpload).Return(expectedRequestID, nil)
 			s.mockInTransactioner.EXPECT().
 				InTransaction(context.Background(), gomock.Any()).
 				DoAndReturn(s.mockInTransaction)
@@ -85,7 +91,7 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
 				Return(storedFileUpload, models.ChangeTypeCreate, nil)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, s.mockRequestIDMaker)
 
 			registeredFileUpload, err := registry.RegisterFileUpload(
 				context.Background(),
@@ -98,6 +104,8 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 		s.Run("and returns error for conflicting change type", func() {
 			clock := &MockClock{}
 
+			s.mockRequestIDMaker.EXPECT().
+				MakeRequestID(inputFileUpload).Return(expectedRequestID, nil)
 			s.mockInTransactioner.EXPECT().
 				InTransaction(context.Background(), gomock.Any()).
 				DoAndReturn(s.mockInTransaction)
@@ -105,7 +113,7 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
 				Return(storedFileUpload, models.ChangeTypeUpdate, nil)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, s.mockRequestIDMaker)
 
 			registeredFileUpload, err := registry.RegisterFileUpload(
 				context.Background(),
@@ -120,14 +128,32 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 	s.Run("forwards error", func() {
 		expectedErr := errors.New("oh no")
 
+		s.Run("from RequestIDMaker", func() {
+			clock := &MockClock{}
+
+			s.mockRequestIDMaker.EXPECT().
+				MakeRequestID(inputFileUpload).Return("", expectedErr)
+
+			registry := fileregistry.New(clock, s.mockInTransactioner, s.mockRequestIDMaker)
+
+			registeredFileUpload, err := registry.RegisterFileUpload(
+				context.Background(),
+				inputFileUpload,
+			)
+
+			s.Require().Nil(registeredFileUpload)
+			s.ErrorIs(err, expectedErr)
+		})
 		s.Run("from InTransactioner", func() {
 			clock := &MockClock{}
 
+			s.mockRequestIDMaker.EXPECT().
+				MakeRequestID(inputFileUpload).Return(expectedRequestID, nil)
 			s.mockInTransactioner.EXPECT().
 				InTransaction(context.Background(), gomock.Any()).
 				Return(nil, expectedErr)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, s.mockRequestIDMaker)
 
 			registeredFileUpload, err := registry.RegisterFileUpload(
 				context.Background(),
@@ -140,6 +166,8 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 		s.Run("from get file upload for change request ID", func() {
 			clock := &MockClock{}
 
+			s.mockRequestIDMaker.EXPECT().
+				MakeRequestID(inputFileUpload).Return(expectedRequestID, nil)
 			s.mockInTransactioner.EXPECT().
 				InTransaction(context.Background(), gomock.Any()).
 				DoAndReturn(s.mockInTransaction)
@@ -147,7 +175,7 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
 				Return(nil, models.ChangeType(0), expectedErr)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, s.mockRequestIDMaker)
 
 			registeredFileUpload, err := registry.RegisterFileUpload(
 				context.Background(),
@@ -160,6 +188,8 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 		s.Run("from insert file upload ", func() {
 			clock := &MockClock{}
 
+			s.mockRequestIDMaker.EXPECT().
+				MakeRequestID(inputFileUpload).Return(expectedRequestID, nil)
 			s.mockInTransactioner.EXPECT().
 				InTransaction(context.Background(), gomock.Any()).
 				DoAndReturn(s.mockInTransaction)
@@ -170,7 +200,7 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 				InsertFileUpload(context.Background(), expectedRequestID, inputFileUpload).
 				Return(nil, expectedErr)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, s.mockRequestIDMaker)
 
 			registeredFileUpload, err := registry.RegisterFileUpload(
 				context.Background(),
@@ -208,7 +238,7 @@ func (s *FileRegistryTestSuite) TestMarkFileUploadUploaded() {
 			).
 			Return(updatedFileUpload, nil)
 
-		registry := fileregistry.New(clock, s.mockInTransactioner)
+		registry := fileregistry.New(clock, s.mockInTransactioner, nil)
 
 		markedUploadedFileUpload, err := registry.MarkFileUploadUploaded(
 			context.Background(),
@@ -230,7 +260,7 @@ func (s *FileRegistryTestSuite) TestMarkFileUploadUploaded() {
 				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
 				Return(updatedFileUpload, models.ChangeTypeUpdate, nil)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, nil)
 
 			markedUploadedFileUpload, err := registry.MarkFileUploadUploaded(
 				context.Background(),
@@ -250,7 +280,7 @@ func (s *FileRegistryTestSuite) TestMarkFileUploadUploaded() {
 				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
 				Return(updatedFileUpload, models.ChangeTypeCreate, nil)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, nil)
 
 			markedUploadedFileUpload, err := registry.MarkFileUploadUploaded(
 				context.Background(),
@@ -272,7 +302,7 @@ func (s *FileRegistryTestSuite) TestMarkFileUploadUploaded() {
 				InTransaction(context.Background(), gomock.Any()).
 				Return(nil, expectedErr)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, nil)
 
 			markedUploadedFileUpload, err := registry.MarkFileUploadUploaded(
 				context.Background(),
@@ -292,7 +322,7 @@ func (s *FileRegistryTestSuite) TestMarkFileUploadUploaded() {
 				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
 				Return(nil, models.ChangeType(0), expectedErr)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, nil)
 
 			markedUploadedFileUpload, err := registry.MarkFileUploadUploaded(
 				context.Background(),
@@ -315,7 +345,7 @@ func (s *FileRegistryTestSuite) TestMarkFileUploadUploaded() {
 				UpdateFileUpload(context.Background(), expectedRequestID, inputFileUpload).
 				Return(nil, expectedErr)
 
-			registry := fileregistry.New(clock, s.mockInTransactioner)
+			registry := fileregistry.New(clock, s.mockInTransactioner, nil)
 
 			registeredFileUpload, err := registry.MarkFileUploadUploaded(
 				context.Background(),
