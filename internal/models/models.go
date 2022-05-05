@@ -16,6 +16,7 @@ type FileUpload struct {
 	EncryptionAlgorithm EncryptionAlgorithm
 	CreatedAtTimestamp  time.Time
 	UploadedAtTimestamp time.Time
+	DeletedAtTimestamp  time.Time
 }
 
 // EncryptionAlgorithm denotes a particular encryption algorithm using an

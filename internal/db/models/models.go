@@ -28,6 +28,7 @@ type FileUploadRow struct {
 	EncryptionAlgorithm EncryptionAlgorithm `db:"encryption_algorithm"`
 	CreatedAtTimestamp  time.Time           `db:"created_at_timestamp"`
 	UploadedAtTimestamp time.Time           `db:"uploaded_at_timestamp"`
+	DeletedAtTimestamp  time.Time           `db:"deleted_at_timestamp"`
 }
 
 type FileUploadHistoryRow struct {
@@ -40,6 +41,7 @@ type FileUploadHistoryRow struct {
 	EncryptionAlgorithm EncryptionAlgorithm `db:"encryption_algorithm"`
 	CreatedAtTimestamp  time.Time           `db:"created_at_timestamp"`
 	UploadedAtTimestamp time.Time           `db:"uploaded_at_timestamp"`
+	DeletedAtTimestamp  time.Time           `db:"deleted_at_timestamp"`
 	ChangeType          ChangeType          `db:"change_type"`
 }
 
@@ -92,6 +94,7 @@ func NewFileUploadRowFromBusiness(from *models.FileUpload) *FileUploadRow {
 		Salt:                from.Salt,
 		CreatedAtTimestamp:  from.CreatedAtTimestamp,
 		UploadedAtTimestamp: from.UploadedAtTimestamp,
+		DeletedAtTimestamp:  from.DeletedAtTimestamp,
 	}
 }
 
@@ -105,6 +108,7 @@ func (fu *FileUploadRow) ToBusiness() *models.FileUpload {
 		EncryptionAlgorithm: fu.EncryptionAlgorithm.ToBusiness(),
 		CreatedAtTimestamp:  fu.CreatedAtTimestamp,
 		UploadedAtTimestamp: fu.UploadedAtTimestamp,
+		DeletedAtTimestamp:  fu.DeletedAtTimestamp,
 	}
 }
 
@@ -124,6 +128,7 @@ func NewFileUploadHistoryRowFromBusiness(
 		EncryptionAlgorithm: NewEncryptionAlgorithmFromBusiness(upload.EncryptionAlgorithm),
 		CreatedAtTimestamp:  upload.CreatedAtTimestamp,
 		UploadedAtTimestamp: upload.UploadedAtTimestamp,
+		DeletedAtTimestamp:  upload.DeletedAtTimestamp,
 		ChangeType:          NewChangeTypeFromBusiness(changeType),
 	}
 }
@@ -138,5 +143,6 @@ func (fu *FileUploadHistoryRow) ToBusiness() (*models.FileUpload, string, models
 		EncryptionAlgorithm: fu.EncryptionAlgorithm.ToBusiness(),
 		CreatedAtTimestamp:  fu.CreatedAtTimestamp,
 		UploadedAtTimestamp: fu.UploadedAtTimestamp,
+		DeletedAtTimestamp:  fu.DeletedAtTimestamp,
 	}, fu.RequestID, fu.ChangeType.ToBusiness()
 }

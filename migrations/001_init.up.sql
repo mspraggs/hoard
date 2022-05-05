@@ -6,7 +6,8 @@ CREATE TABLE file_uploads (
     salt                  BLOB NOT NULL,
     encryption_algorithm  INTEGER NOT NULL,
     created_at_timestamp  DATETIME NOT NULL,
-    uploaded_at_timestamp DATETIME NOT NULL
+    uploaded_at_timestamp DATETIME NOT NULL,
+    deleted_at_timestamp  DATETIME NOT NULL
 );
 
 CREATE TABLE file_uploads_history (
@@ -19,5 +20,6 @@ CREATE TABLE file_uploads_history (
     encryption_algorithm  INTEGER NOT NULL,
     created_at_timestamp  DATETIME NOT NULL,
     uploaded_at_timestamp DATETIME NOT NULL,
+    deleted_at_timestamp  DATETIME NOT NULL,
     change_type           INTEGER NOT NULL
 );
