@@ -1,4 +1,4 @@
-package handler_test
+package fileuploadhandler_test
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mspraggs/hoard/internal/handler"
-	"github.com/mspraggs/hoard/internal/handler/mocks"
+	"github.com/mspraggs/hoard/internal/fileuploadhandler"
+	"github.com/mspraggs/hoard/internal/fileuploadhandler/mocks"
 	"github.com/mspraggs/hoard/internal/models"
 )
 
-type HandlerTestSuite struct {
+type FileUploadHandlerTestSuite struct {
 	suite.Suite
 	controller       *gomock.Controller
 	now              time.Time
@@ -23,17 +23,17 @@ type HandlerTestSuite struct {
 }
 
 func TestHandlerTestSuite(t *testing.T) {
-	suite.Run(t, new(HandlerTestSuite))
+	suite.Run(t, new(FileUploadHandlerTestSuite))
 }
 
-func (s *HandlerTestSuite) SetupTest() {
+func (s *FileUploadHandlerTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
 	s.now = time.Time{}
 	s.mockFileRegistry = mocks.NewMockFileRegistry(s.controller)
 	s.mockFileStore = mocks.NewMockFileStore(s.controller)
 }
 
-func (s *HandlerTestSuite) TestUploadFileUpload() {
+func (s *FileUploadHandlerTestSuite) TestHandleFileUpload() {
 	insertionTime := time.Now()
 	updateTime := insertionTime.Add(time.Second)
 	inputFileUpload := &models.FileUpload{
@@ -60,7 +60,7 @@ func (s *HandlerTestSuite) TestUploadFileUpload() {
 			MarkFileUploadUploaded(context.Background(), registeredFileUpload).
 			Return(uploadedFileUpload, nil)
 
-		handler := handler.New(s.mockFileStore, s.mockFileRegistry)
+		handler := fileuploadhandler.New(s.mockFileStore, s.mockFileRegistry)
 
 		handledFileUpload, err := handler.HandleFileUpload(context.Background(), inputFileUpload)
 
@@ -73,7 +73,7 @@ func (s *HandlerTestSuite) TestUploadFileUpload() {
 			RegisterFileUpload(context.Background(), inputFileUpload).
 			Return(uploadedFileUpload, nil)
 
-		handler := handler.New(s.mockFileStore, s.mockFileRegistry)
+		handler := fileuploadhandler.New(s.mockFileStore, s.mockFileRegistry)
 
 		handledFileUpload, err := handler.HandleFileUpload(context.Background(), inputFileUpload)
 
@@ -89,7 +89,7 @@ func (s *HandlerTestSuite) TestUploadFileUpload() {
 				RegisterFileUpload(context.Background(), inputFileUpload).
 				Return(nil, forwardedErr)
 
-			handler := handler.New(s.mockFileStore, s.mockFileRegistry)
+			handler := fileuploadhandler.New(s.mockFileStore, s.mockFileRegistry)
 
 			handledFileUpload, err := handler.HandleFileUpload(context.Background(), inputFileUpload)
 
@@ -105,7 +105,7 @@ func (s *HandlerTestSuite) TestUploadFileUpload() {
 				StoreFileUpload(context.Background(), registeredFileUpload).
 				Return(nil, forwardedErr)
 
-			handler := handler.New(s.mockFileStore, s.mockFileRegistry)
+			handler := fileuploadhandler.New(s.mockFileStore, s.mockFileRegistry)
 
 			handledFileUpload, err := handler.HandleFileUpload(context.Background(), inputFileUpload)
 
@@ -124,7 +124,7 @@ func (s *HandlerTestSuite) TestUploadFileUpload() {
 				MarkFileUploadUploaded(context.Background(), registeredFileUpload).
 				Return(nil, forwardedErr)
 
-			handler := handler.New(s.mockFileStore, s.mockFileRegistry)
+			handler := fileuploadhandler.New(s.mockFileStore, s.mockFileRegistry)
 
 			handledFileUpload, err := handler.HandleFileUpload(context.Background(), inputFileUpload)
 
