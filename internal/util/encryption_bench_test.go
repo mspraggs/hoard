@@ -1,11 +1,11 @@
-package utils_test
+package util_test
 
 import (
 	"crypto/rand"
 	"testing"
 
 	"github.com/mspraggs/hoard/internal/models"
-	"github.com/mspraggs/hoard/internal/utils"
+	"github.com/mspraggs/hoard/internal/util"
 )
 
 const (
@@ -27,7 +27,7 @@ func BenchmarkGenerateKey(b *testing.B) {
 		}
 	}
 
-	keyGen := utils.NewEncryptionKeyGenerator([]byte("somerandompassword"))
+	keyGen := util.NewEncryptionKeyGenerator([]byte("somerandompassword"))
 
 	b.ResetTimer()
 

@@ -1,4 +1,4 @@
-package utils_test
+package util_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/mspraggs/hoard/internal/models"
-	"github.com/mspraggs/hoard/internal/utils"
+	"github.com/mspraggs/hoard/internal/util"
 )
 
 type EncryptionKeyGeneratorTestSuite struct {
@@ -43,7 +43,7 @@ func (s *EncryptionKeyGeneratorTestSuite) TestGenerateKey() {
 			175, 87, 107, 151, 111, 105,
 		})
 
-		encKeyGen := utils.NewEncryptionKeyGenerator(secret)
+		encKeyGen := util.NewEncryptionKeyGenerator(secret)
 
 		key, err := encKeyGen.GenerateKey(fileUpload)
 
@@ -59,7 +59,7 @@ func (s *EncryptionKeyGeneratorTestSuite) TestGenerateKey() {
 			EncryptionAlgorithm: models.EncryptionAlgorithm(0),
 		}
 
-		encKeyGen := utils.NewEncryptionKeyGenerator(nil)
+		encKeyGen := util.NewEncryptionKeyGenerator(nil)
 
 		key, err := encKeyGen.GenerateKey(fileUpload)
 
