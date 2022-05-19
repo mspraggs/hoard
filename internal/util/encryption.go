@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	memory  uint32 = 1024 * 64
-	time    uint32 = 1
-	threads uint8  = 1
+	memParam  uint32 = 1024 * 64
+	timeParam uint32 = 1
+	threads   uint8  = 1
 )
 
 // EncryptionKeyGenerator provides a way to generate encryption keys given some
@@ -41,8 +41,8 @@ func (ekg *EncryptionKeyGenerator) GenerateKey(
 	keyBytes := argon2.Key(
 		ekg.secret,
 		fileUpload.Salt,
-		time,
-		memory,
+		timeParam,
+		memParam,
 		threads,
 		keyLen,
 	)
