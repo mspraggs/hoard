@@ -32,7 +32,7 @@ const (
 func (a EncryptionAlgorithm) KeySize() (uint32, error) {
 	switch a {
 	case EncryptionAlgorithmAES256:
-		return 256, nil
+		return 256 / 8, nil
 	default:
 		return 0, errors.New("unknown encryption algorithm")
 	}
