@@ -48,6 +48,7 @@ const (
 type Config struct {
 	NumThreads  int          `yaml:"num_threads"`
 	Registry    RegConfig    `yaml:"registry"`
+	Store       StoreConfig  `yaml:"store"`
 	Uploads     UploadConfig `yaml:"uploads"`
 	Directories []DirConfig  `yaml:"directories"`
 }
@@ -55,6 +56,11 @@ type Config struct {
 // RegConfig contains all configuration relating to the file registry.
 type RegConfig struct {
 	Path string `yaml:"path"`
+}
+
+// StoreConfig contains all configuration relating to the file store.
+type StoreConfig struct {
+	Region string `yaml:"region"`
 }
 
 // UploadConfig contains all configuration common to all file uploads.
