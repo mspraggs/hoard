@@ -110,6 +110,44 @@ func (r *FileRegistry) RegisterFileUpload(
 	return createdFileUpload, nil
 }
 
+// GetUploadedFileUpload fetches an existing file upload from the database using
+// the provided ID.
+func (r *FileRegistry) GetUploadedFileUpload(
+	ctx context.Context,
+	ID string,
+) (*models.FileUpload, error) {
+
+	opaqueUploadedFileUpload, err := r.inTxner.InTransaction(
+		ctx,
+		func(c context.Context, s Store) (interface{}, error) {
+			existingFileUpload, changeType, err := s.GetFileUploadByChangeRequestID(c, ID)
+
+			if err != nil {
+				if !errors.Is(err, pkgerrors.ErrNotFound) {
+					return nil, err
+				} else {
+					return nil, nil
+				}
+			}
+
+			if changeType == models.ChangeTypeUpdate && existingFileUpload.IsUploaded() {
+				return existingFileUpload, nil
+			}
+			return nil, nil
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error while retrieving file upload from db: %w", err)
+	}
+	if opaqueUploadedFileUpload == nil {
+		return nil, nil
+	}
+
+	uploadedFileUpload := opaqueUploadedFileUpload.(*models.FileUpload)
+
+	return uploadedFileUpload, nil
+}
+
 // MakeFileUploadUploaded marks a file upload as uploaded using the store held
 // by the file registry.
 func (r *FileRegistry) MarkFileUploadUploaded(

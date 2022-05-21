@@ -213,6 +213,126 @@ func (s *FileRegistryTestSuite) TestRegisterFileUpload() {
 	})
 }
 
+func (s *FileRegistryTestSuite) TestGetUploadedFileUpload() {
+	fileUpload := &models.FileUpload{
+		ID:                  "foo",
+		UploadedAtTimestamp: time.Unix(1, 0),
+	}
+
+	s.Run("gets uploaded file upload", func() {
+		s.mockInTransactioner.EXPECT().
+			InTransaction(context.Background(), gomock.Any()).
+			DoAndReturn(s.mockInTransaction)
+		s.mockStore.EXPECT().
+			GetFileUploadByChangeRequestID(context.Background(), fileUpload.ID).
+			Return(fileUpload, models.ChangeTypeUpdate, nil)
+
+		registry := fileregistry.New(nil, s.mockInTransactioner, nil)
+
+		uploadedFileUpload, err := registry.GetUploadedFileUpload(
+			context.Background(), fileUpload.ID,
+		)
+
+		s.Require().NoError(err)
+		s.Equal(fileUpload, uploadedFileUpload)
+	})
+
+	s.Run("returns nil", func() {
+		s.Run("when file upload history row not found", func() {
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				DoAndReturn(s.mockInTransaction)
+			s.mockStore.EXPECT().
+				GetFileUploadByChangeRequestID(context.Background(), fileUpload.ID).
+				Return(nil, models.ChangeType(0), pkgerrors.ErrNotFound)
+
+			registry := fileregistry.New(nil, s.mockInTransactioner, nil)
+
+			uploadedFileUpload, err := registry.GetUploadedFileUpload(
+				context.Background(), fileUpload.ID,
+			)
+
+			s.Require().NoError(err)
+			s.Nil(uploadedFileUpload)
+		})
+		s.Run("for file upload with invalid change type", func() {
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				DoAndReturn(s.mockInTransaction)
+			s.mockStore.EXPECT().
+				GetFileUploadByChangeRequestID(context.Background(), fileUpload.ID).
+				Return(fileUpload, models.ChangeTypeCreate, nil)
+
+			registry := fileregistry.New(nil, s.mockInTransactioner, nil)
+
+			uploadedFileUpload, err := registry.GetUploadedFileUpload(
+				context.Background(), fileUpload.ID,
+			)
+
+			s.Require().NoError(err)
+			s.Nil(uploadedFileUpload)
+		})
+		s.Run("for file upload with zero upload timestamp", func() {
+			nonUploadedFileUpload := &models.FileUpload{
+				ID: fileUpload.ID,
+			}
+
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				DoAndReturn(s.mockInTransaction)
+			s.mockStore.EXPECT().
+				GetFileUploadByChangeRequestID(context.Background(), fileUpload.ID).
+				Return(nonUploadedFileUpload, models.ChangeTypeUpdate, nil)
+
+			registry := fileregistry.New(nil, s.mockInTransactioner, nil)
+
+			uploadedFileUpload, err := registry.GetUploadedFileUpload(
+				context.Background(), fileUpload.ID,
+			)
+
+			s.Require().NoError(err)
+			s.Nil(uploadedFileUpload)
+		})
+	})
+
+	s.Run("forwards error", func() {
+		expectedErr := errors.New("oh no")
+
+		s.Run("from InTransactioner", func() {
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				Return(nil, expectedErr)
+
+			registry := fileregistry.New(nil, s.mockInTransactioner, nil)
+
+			markedUploadedFileUpload, err := registry.MarkFileUploadUploaded(
+				context.Background(),
+				fileUpload,
+			)
+
+			s.Require().Nil(markedUploadedFileUpload)
+			s.ErrorIs(err, expectedErr)
+		})
+		s.Run("from get file upload for change request ID", func() {
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				DoAndReturn(s.mockInTransaction)
+			s.mockStore.EXPECT().
+				GetFileUploadByChangeRequestID(context.Background(), fileUpload.ID).
+				Return(nil, models.ChangeType(0), expectedErr)
+
+			registry := fileregistry.New(nil, s.mockInTransactioner, nil)
+
+			uploadedFileUpload, err := registry.GetUploadedFileUpload(
+				context.Background(), fileUpload.ID,
+			)
+
+			s.Nil(uploadedFileUpload)
+			s.ErrorIs(err, expectedErr)
+		})
+	})
+}
+
 func (s *FileRegistryTestSuite) TestMarkFileUploadUploaded() {
 	inputFileUpload := &models.FileUpload{
 		ID: "foo",

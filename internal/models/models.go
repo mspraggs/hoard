@@ -19,6 +19,11 @@ type FileUpload struct {
 	DeletedAtTimestamp  time.Time
 }
 
+// IsUploaded returns true if the file upload has been uploaded.
+func (fu *FileUpload) IsUploaded() bool {
+	return !fu.UploadedAtTimestamp.IsZero()
+}
+
 // EncryptionAlgorithm denotes a particular encryption algorithm using an
 // integer.
 type EncryptionAlgorithm int
