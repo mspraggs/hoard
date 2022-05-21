@@ -36,6 +36,7 @@ type FileStore struct {
 	fs                  fs.FS
 	ekg                 EncryptionKeyGenerator
 	csAlg               models.ChecksumAlgorithm
+	sc                  models.StorageClass
 	uploaderConstructor UploaderConstructor
 }
 
@@ -46,9 +47,10 @@ func New(
 	uploaderConstructor UploaderConstructor,
 	csAlg models.ChecksumAlgorithm,
 	ekg EncryptionKeyGenerator,
+	sc models.StorageClass,
 ) *FileStore {
 
-	return &FileStore{fs, ekg, csAlg, uploaderConstructor}
+	return &FileStore{fs, ekg, csAlg, sc, uploaderConstructor}
 }
 
 // StoreFileUpload loads a file, generates an encryption key from that file and
@@ -69,7 +71,7 @@ func (s *FileStore) StoreFileUpload(
 		return nil, err
 	}
 	upload := fsmodels.NewFileUploadFromBusiness(
-		fileUpload.EncryptionAlgorithm, encKey, s.csAlg, fileUpload, file,
+		fileUpload.EncryptionAlgorithm, encKey, s.csAlg, s.sc, fileUpload, file,
 	)
 
 	uploader, err := s.uploaderConstructor(file)

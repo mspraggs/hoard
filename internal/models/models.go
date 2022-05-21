@@ -63,3 +63,20 @@ const (
 	// ChangeTypeUpdate denotes a mutation change type.
 	ChangeTypeUpdate ChangeType = 2
 )
+
+// StorageClass describes a file upload's storage class as an integer.
+type StorageClass int
+
+const (
+	// StorageClassStandard denotes the standard storage backend object class.
+	StorageClassStandard StorageClass = 1
+	// StorageClassArchiveFlexi denotes long-term backend storage with read
+	// times ranging from minutes to 12 hours.
+	StorageClassArchiveFlexi StorageClass = 2
+	// StorageClassArchiveDeep denotes long-term backend storage with long read
+	// times between 12 and 48 hours.
+	StorageClassArchiveDeep StorageClass = 3
+	// StorageClassArchiveInstant denotes long-term backend storage with instant
+	// access reads.
+	StorageClassArchiveInstant StorageClass = 4
+)

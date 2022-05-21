@@ -75,6 +75,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			EncryptionKey:       fsmodels.EncryptionKey([]byte{1, 2, 3}),
 			EncryptionAlgorithm: types.ServerSideEncryptionAes256,
 			ChecksumAlgorithm:   types.ChecksumAlgorithmSha256,
+			StorageClass:        types.StorageClassStandard,
 			Body:                fakeFile,
 		}
 
@@ -196,6 +197,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 				EncryptionKey:       fsmodels.EncryptionKey([]byte{1, 2, 3}),
 				EncryptionAlgorithm: types.ServerSideEncryptionAes256,
 				ChecksumAlgorithm:   types.ChecksumAlgorithmSha256,
+				StorageClass:        types.StorageClassStandard,
 				Body:                fakeFile,
 			}
 
@@ -232,5 +234,6 @@ func (s *FilestoreTestSuite) newStore(
 
 	return filestore.New(
 		fs, uploaderConstructor, models.ChecksumAlgorithmSHA256, s.mockEncKeyGen,
+		models.StorageClassStandard,
 	)
 }

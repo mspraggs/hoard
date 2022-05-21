@@ -99,12 +99,30 @@ func NewChecksumAlgorithmFromBusiness(alg models.ChecksumAlgorithm) ChecksumAlgo
 	}
 }
 
+// NewStorageClassFromBusiness creates a filestore StorageClass from a business
+// StorageClass.
+func NewStorageClassFromBusiness(sc models.StorageClass) StorageClass {
+	switch sc {
+	case models.StorageClassStandard:
+		return types.StorageClassStandard
+	case models.StorageClassArchiveFlexi:
+		return types.StorageClassGlacier
+	case models.StorageClassArchiveDeep:
+		return types.StorageClassDeepArchive
+	case models.StorageClassArchiveInstant:
+		return types.StorageClassGlacierIr
+	default:
+		return StorageClass("")
+	}
+}
+
 // NewFileUploadFromBusiness creates a filestore file upload model from the
 // provided business file upload, encryption key and checksum algorithm.
 func NewFileUploadFromBusiness(
 	encryptionAlgorithm models.EncryptionAlgorithm,
 	encryptionKey models.EncryptionKey,
 	checksumAlgorithm models.ChecksumAlgorithm,
+	storageClass models.StorageClass,
 	upload *models.FileUpload,
 	body io.Reader,
 ) *FileUpload {
@@ -115,6 +133,7 @@ func NewFileUploadFromBusiness(
 		EncryptionKey:       NewEncryptionKeyFromBusiness(encryptionKey),
 		EncryptionAlgorithm: NewEncryptionAlgorithmFromBusiness(encryptionAlgorithm),
 		ChecksumAlgorithm:   NewChecksumAlgorithmFromBusiness(checksumAlgorithm),
+		StorageClass:        NewStorageClassFromBusiness(storageClass),
 		Body:                body,
 	}
 }

@@ -26,6 +26,24 @@ const (
 	EncryptionAlgorithmAES256 EncryptionAlgorithm = "AES256"
 )
 
+// StorageClass is the YAML configuration representation of a configured storage
+// class.
+type StorageClass string
+
+const (
+	// StorageClassStandard denotes the standard storage backend object class.
+	StorageClassStandard StorageClass = "STANDARD"
+	// StorageClassArchiveFlexi denotes long-term backend storage with read
+	// times ranging from minutes to 12 hours.
+	StorageClassArchiveFlexi StorageClass = "ARCHIVE_FLEXI"
+	// StorageClassArchiveDeep denotes long-term backend storage with long read
+	// times between 12 and 48 hours.
+	StorageClassArchiveDeep StorageClass = "ARCHIVE_DEEP"
+	// StorageClassArchiveInstant denotes long-term backend storage with instant
+	// access reads.
+	StorageClassArchiveInstant StorageClass = "ARCHIVE_INSTANT"
+)
+
 // Config contains all configuration necessary for the application to run.
 type Config struct {
 	NumThreads  int          `yaml:"num_threads"`
@@ -51,6 +69,7 @@ type DirConfig struct {
 	Bucket              string              `yaml:"bucket"`
 	Path                string              `yaml:"path"`
 	EncryptionAlgorithm EncryptionAlgorithm `yaml:"encryption_algorithm"`
+	StorageClass        StorageClass        `yaml:"storage_class"`
 	RetentionPeriod     time.Duration       `yaml:"retention_period"`
 }
 
@@ -73,5 +92,22 @@ func (a EncryptionAlgorithm) ToBusiness() models.EncryptionAlgorithm {
 		return models.EncryptionAlgorithmAES256
 	default:
 		return models.EncryptionAlgorithm(0)
+	}
+}
+
+// ToBusiness converts the YAML represetnation of a encryption algorithm to the
+// equivalent buisness model representation.
+func (c StorageClass) ToBusiness() models.StorageClass {
+	switch c {
+	case StorageClassStandard:
+		return models.StorageClassStandard
+	case StorageClassArchiveFlexi:
+		return models.StorageClassArchiveFlexi
+	case StorageClassArchiveDeep:
+		return models.StorageClassArchiveDeep
+	case StorageClassArchiveInstant:
+		return models.StorageClassArchiveInstant
+	default:
+		return models.StorageClass(0)
 	}
 }
