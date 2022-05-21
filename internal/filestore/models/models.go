@@ -1,6 +1,7 @@
 package models
 
 import (
+	"crypto/md5"
 	"encoding/base64"
 	"io"
 
@@ -143,10 +144,12 @@ func NewFileUploadFromBusiness(
 func (fu *FileUpload) ToCreateMultipartUploadInput() *CreateMultipartUploadInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
+	sseKeyMD5 := md5Hash(fu.EncryptionKey)
 	input := &CreateMultipartUploadInput{
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
 		SSECustomerKey:       &sseKey,
+		SSECustomerKeyMD5:    &sseKeyMD5,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 		ChecksumAlgorithm:    fu.ChecksumAlgorithm,
 		StorageClass:         fu.StorageClass,
@@ -160,11 +163,13 @@ func (fu *FileUpload) ToCreateMultipartUploadInput() *CreateMultipartUploadInput
 func (fu *FileUpload) ToUploadPartInput(uploadID string, chunkSize int64) *UploadPartInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
+	sseKeyMD5 := md5Hash(fu.EncryptionKey)
 	input := &UploadPartInput{
 		UploadId:             &uploadID,
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
 		SSECustomerKey:       &sseKey,
+		SSECustomerKeyMD5:    &sseKeyMD5,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 		ChecksumAlgorithm:    fu.ChecksumAlgorithm,
 		Body:                 &io.LimitedReader{R: fu.Body, N: chunkSize},
@@ -180,11 +185,13 @@ func (fu *FileUpload) ToCompleteMultipartUploadInput(
 ) *CompleteMultipartUploadInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
+	sseKeyMD5 := md5Hash(fu.EncryptionKey)
 	input := &CompleteMultipartUploadInput{
 		UploadId:             &uploadID,
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
 		SSECustomerKey:       &sseKey,
+		SSECustomerKeyMD5:    &sseKeyMD5,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 	}
 
@@ -196,10 +203,12 @@ func (fu *FileUpload) ToCompleteMultipartUploadInput(
 func (fu *FileUpload) ToPutObjectInput() *PutObjectInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
+	sseKeyMD5 := md5Hash(fu.EncryptionKey)
 	input := &PutObjectInput{
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
 		SSECustomerKey:       &sseKey,
+		SSECustomerKeyMD5:    &sseKeyMD5,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
 		ChecksumAlgorithm:    fu.ChecksumAlgorithm,
 		StorageClass:         fu.StorageClass,
@@ -207,4 +216,9 @@ func (fu *FileUpload) ToPutObjectInput() *PutObjectInput {
 	}
 
 	return input
+}
+
+func md5Hash(input []byte) string {
+	hash := md5.Sum(input)
+	return base64.StdEncoding.EncodeToString(hash[:])
 }

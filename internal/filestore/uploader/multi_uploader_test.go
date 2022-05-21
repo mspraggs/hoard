@@ -41,11 +41,13 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 	body := []byte{0, 1, 2, 3, 4, 5, 6, 7}
 	key := "foo"
 	maxChunkSize := 5
+	emptyMD5 := "1B2M2Y8AsgTpgAmY7PhCfg=="
 
 	createMultipartUploadInput := &s3.CreateMultipartUploadInput{
 		Key:                  &key,
 		Bucket:               &empty,
 		SSECustomerKey:       &empty,
+		SSECustomerKeyMD5:    &emptyMD5,
 		SSECustomerAlgorithm: &empty,
 		ChecksumAlgorithm:    types.ChecksumAlgorithm(""),
 		StorageClass:         types.StorageClass(""),
@@ -57,6 +59,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 		Key:                  &key,
 		Bucket:               &empty,
 		SSECustomerKey:       &empty,
+		SSECustomerKeyMD5:    &emptyMD5,
 		SSECustomerAlgorithm: &empty,
 		UploadId:             &uploadID,
 	}
@@ -195,11 +198,13 @@ func newTestUploadPartInput(
 ) *s3.UploadPartInput {
 
 	empty := ""
+	emptyMD5 := "1B2M2Y8AsgTpgAmY7PhCfg=="
 	return &s3.UploadPartInput{
 		Key:                  &upload.Key,
 		UploadId:             &uploadID,
 		Bucket:               &empty,
 		SSECustomerKey:       &empty,
+		SSECustomerKeyMD5:    &emptyMD5,
 		SSECustomerAlgorithm: &empty,
 		ChecksumAlgorithm:    upload.ChecksumAlgorithm,
 		Body:                 &io.LimitedReader{R: upload.Body, N: maxChunkSize},

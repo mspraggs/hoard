@@ -79,10 +79,12 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 
 func newTestPutObjectInput(upload *fsmodels.FileUpload, body []byte) *s3.PutObjectInput {
 	empty := ""
+	emptyMD5 := "1B2M2Y8AsgTpgAmY7PhCfg=="
 	return &s3.PutObjectInput{
 		Key:                  &upload.Key,
 		Bucket:               &empty,
 		SSECustomerKey:       &empty,
+		SSECustomerKeyMD5:    &emptyMD5,
 		SSECustomerAlgorithm: &empty,
 		ChecksumAlgorithm:    upload.ChecksumAlgorithm,
 		Body:                 bytes.NewReader(body),
