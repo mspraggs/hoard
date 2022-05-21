@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/doug-martin/goqu"
+	"github.com/google/uuid"
 
 	dbmodels "github.com/mspraggs/hoard/internal/db/models"
 	pkgerrors "github.com/mspraggs/hoard/internal/errors"
@@ -52,6 +53,10 @@ func (s *Store) InsertFileUpload(
 	requestID string,
 	fileUpload *models.FileUpload,
 ) (*models.FileUpload, error) {
+
+	if fileUpload.ID == "" {
+		fileUpload.ID = uuid.NewString()
+	}
 
 	fileUploadHistoryRow := dbmodels.NewFileUploadHistoryRowFromBusiness(
 		requestID, models.ChangeTypeCreate, fileUpload,

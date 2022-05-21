@@ -3,6 +3,7 @@ package db_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/mspraggs/hoard/internal/db"
@@ -157,45 +159,92 @@ func (s *StoreTesteSuite) TestInsertFileUpload() {
 	}
 
 	s.Run("inserts into file uploads and file uploads history tables", func() {
-		expectedFileUpload := fileUpload
-		expectedFileUploadRows := []*dbmodels.FileUploadRow{
-			{
-				ID:   ID,
-				Salt: []byte{},
-			},
-		}
-		expectedFileUploadHistoryRows := []*dbmodels.FileUploadHistoryRow{
-			{
-				RequestID:  requestID,
-				ID:         ID,
-				ChangeType: dbmodels.ChangeTypeCreate,
-				Salt:       []byte{},
-			},
-		}
+		s.Run("using existing ID", func() {
+			expectedFileUpload := fileUpload
+			expectedFileUploadRows := []*dbmodels.FileUploadRow{
+				{
+					ID:   ID,
+					Salt: []byte{},
+				},
+			}
+			expectedFileUploadHistoryRows := []*dbmodels.FileUploadHistoryRow{
+				{
+					RequestID:  requestID,
+					ID:         ID,
+					ChangeType: dbmodels.ChangeTypeCreate,
+					Salt:       []byte{},
+				},
+			}
 
-		tx, err := s.db.Begin()
-		s.Require().NoError(err)
+			tx, err := s.db.Begin()
+			s.Require().NoError(err)
 
-		var insertedFileUpload *models.FileUpload
-		err = tx.Wrap(func() error {
-			store := db.NewStore(tx)
-			insertedFileUpload, err = store.InsertFileUpload(
-				context.Background(), requestID, fileUpload,
-			)
+			var insertedFileUpload *models.FileUpload
+			err = tx.Wrap(func() error {
+				store := db.NewStore(tx)
+				insertedFileUpload, err = store.InsertFileUpload(
+					context.Background(), requestID, fileUpload,
+				)
 
-			return err
+				return err
+			})
+
+			s.Require().NoError(err)
+			s.Equal(expectedFileUpload, insertedFileUpload)
+
+			fileUploadRows, err := s.selectFileUploadRows()
+			s.Require().NoError(err)
+			s.ElementsMatch(expectedFileUploadRows, fileUploadRows)
+
+			fileUploadHistoryRows, err := s.selectFileUploadHistoryRows()
+			s.Require().NoError(err)
+			s.ElementsMatch(expectedFileUploadHistoryRows, fileUploadHistoryRows)
 		})
+		s.Run("and populates ID when empty", func() {
+			fileUpload := &models.FileUpload{Salt: []byte{}}
+			expectedFileUpload := &models.FileUpload{Salt: []byte{}}
 
-		s.Require().NoError(err)
-		s.Equal(expectedFileUpload, insertedFileUpload)
+			tx, err := s.db.Begin()
+			s.Require().NoError(err)
 
-		fileUploadRows, err := s.selectFileUploadRows()
-		s.Require().NoError(err)
-		s.ElementsMatch(expectedFileUploadRows, fileUploadRows)
+			var insertedFileUpload *models.FileUpload
+			err = tx.Wrap(func() error {
+				store := db.NewStore(tx)
+				insertedFileUpload, err = store.InsertFileUpload(
+					context.Background(), requestID, fileUpload,
+				)
 
-		fileUploadHistoryRows, err := s.selectFileUploadHistoryRows()
-		s.Require().NoError(err)
-		s.ElementsMatch(expectedFileUploadHistoryRows, fileUploadHistoryRows)
+				return err
+			})
+
+			s.Require().NoError(err)
+			s.isUUID(insertedFileUpload.ID)
+			expectedFileUpload.ID = insertedFileUpload.ID
+			s.Equal(expectedFileUpload, insertedFileUpload)
+
+			expectedFileUploadRows := []*dbmodels.FileUploadRow{
+				{
+					ID:   insertedFileUpload.ID,
+					Salt: []byte{},
+				},
+			}
+			expectedFileUploadHistoryRows := []*dbmodels.FileUploadHistoryRow{
+				{
+					RequestID:  requestID,
+					ChangeType: dbmodels.ChangeTypeCreate,
+					ID:         insertedFileUpload.ID,
+					Salt:       []byte{},
+				},
+			}
+
+			fileUploadRows, err := s.selectFileUploadRows()
+			s.Require().NoError(err)
+			s.ElementsMatch(expectedFileUploadRows, fileUploadRows)
+
+			fileUploadHistoryRows, err := s.selectFileUploadHistoryRows()
+			s.Require().NoError(err)
+			s.ElementsMatch(expectedFileUploadHistoryRows, fileUploadHistoryRows)
+		})
 	})
 
 	s.Run("forwards error from DB", func() {
@@ -466,4 +515,10 @@ func (s *StoreTesteSuite) selectFileUploadHistoryRows() ([]*dbmodels.FileUploadH
 	rows := []*dbmodels.FileUploadHistoryRow{}
 	err := s.db.From("file_uploads_history").Select(goqu.Star()).ScanStructs(&rows)
 	return rows, err
+}
+
+func (s *StoreTesteSuite) isUUID(str string) {
+	if _, err := uuid.Parse(str); err != nil {
+		s.FailNow(fmt.Sprintf("%q is not a valid UUID", str))
+	}
 }
