@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/base64"
 	"fmt"
 
 	"golang.org/x/crypto/argon2"
@@ -38,9 +39,13 @@ func (ekg *EncryptionKeyGenerator) GenerateKey(
 	if err != nil {
 		return models.EncryptionKey(nil), fmt.Errorf("unable to generate encryption key: %w", err)
 	}
+	salt, err := base64.RawStdEncoding.DecodeString(fileUpload.Salt)
+	if err != nil {
+		return models.EncryptionKey(nil), fmt.Errorf("unable to decode file upload salt: %w", err)
+	}
 	keyBytes := argon2.Key(
 		ekg.secret,
-		fileUpload.Salt,
+		salt,
 		timeParam,
 		memParam,
 		threads,

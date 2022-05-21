@@ -19,7 +19,7 @@ func TestEncryptionKeyGeneratorTestSuite(t *testing.T) {
 
 func (s *EncryptionKeyGeneratorTestSuite) TestGenerateKey() {
 	secret := []byte{1, 2, 3}
-	salt := []byte{4, 5, 6}
+	salt := "BAUG"
 	fileUpload := &models.FileUpload{
 		Salt:                salt,
 		EncryptionAlgorithm: models.EncryptionAlgorithmAES256,
@@ -40,19 +40,37 @@ func (s *EncryptionKeyGeneratorTestSuite) TestGenerateKey() {
 		s.Equal(expectedKey, key)
 	})
 
-	s.Run("returns error for unsupported encryption algorithm", func() {
-		expectedKey := models.EncryptionKey(nil)
+	s.Run("returns error", func() {
+		s.Run("for unsupported encryption algorithm", func() {
+			expectedKey := models.EncryptionKey(nil)
 
-		fileUpload := &models.FileUpload{
-			Salt:                salt,
-			EncryptionAlgorithm: models.EncryptionAlgorithm(0),
-		}
+			fileUpload := &models.FileUpload{
+				Salt:                salt,
+				EncryptionAlgorithm: models.EncryptionAlgorithm(0),
+			}
 
-		encKeyGen := util.NewEncryptionKeyGenerator(nil)
+			encKeyGen := util.NewEncryptionKeyGenerator(nil)
 
-		key, err := encKeyGen.GenerateKey(fileUpload)
+			key, err := encKeyGen.GenerateKey(fileUpload)
 
-		s.Equal(expectedKey, key)
-		s.ErrorContains(err, "unable to generate")
+			s.Equal(expectedKey, key)
+			s.ErrorContains(err, "unable to generate")
+		})
+		s.Run("for invalid salt", func() {
+			expectedKey := models.EncryptionKey(nil)
+
+			fileUpload := &models.FileUpload{
+				Salt:                "&*(",
+				EncryptionAlgorithm: models.EncryptionAlgorithmAES256,
+			}
+
+			encKeyGen := util.NewEncryptionKeyGenerator(nil)
+
+			key, err := encKeyGen.GenerateKey(fileUpload)
+
+			s.Equal(expectedKey, key)
+			s.ErrorContains(err, "unable to decode")
+		})
 	})
+
 }

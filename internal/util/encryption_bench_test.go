@@ -2,6 +2,7 @@ package util_test
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"testing"
 
 	"github.com/mspraggs/hoard/internal/models"
@@ -36,15 +37,15 @@ func BenchmarkGenerateKey(b *testing.B) {
 	}
 }
 
-func generateBenchmarkSalts(num, len int) ([][]byte, error) {
-	salts := make([][]byte, numSecrets)
+func generateBenchmarkSalts(num, len int) ([]string, error) {
+	salts := make([]string, numSecrets)
 
 	for i := 0; i < num; i++ {
 		salt := make([]byte, secretLen)
 		if _, err := rand.Read(salt); err != nil {
 			return nil, err
 		}
-		salts[i] = salt
+		salts[i] = base64.RawStdEncoding.EncodeToString(salt)
 	}
 
 	return salts, nil

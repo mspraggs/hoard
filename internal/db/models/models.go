@@ -24,7 +24,7 @@ type FileUploadRow struct {
 	LocalPath           string              `db:"local_path"`
 	Bucket              string              `db:"bucket"`
 	Version             string              `db:"version"`
-	Salt                []byte              `db:"salt"`
+	Salt                string              `db:"salt"`
 	EncryptionAlgorithm EncryptionAlgorithm `db:"encryption_algorithm"`
 	CreatedAtTimestamp  time.Time           `db:"created_at_timestamp"`
 	UploadedAtTimestamp time.Time           `db:"uploaded_at_timestamp"`
@@ -37,7 +37,7 @@ type FileUploadHistoryRow struct {
 	LocalPath           string              `db:"local_path"`
 	Bucket              string              `db:"bucket"`
 	Version             string              `db:"version"`
-	Salt                []byte              `db:"salt"`
+	Salt                string              `db:"salt"`
 	EncryptionAlgorithm EncryptionAlgorithm `db:"encryption_algorithm"`
 	CreatedAtTimestamp  time.Time           `db:"created_at_timestamp"`
 	UploadedAtTimestamp time.Time           `db:"uploaded_at_timestamp"`

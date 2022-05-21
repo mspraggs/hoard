@@ -69,13 +69,11 @@ func (s *StoreTesteSuite) TestGetFileByChangeRequestID() {
 		RequestID:  requestID,
 		ID:         ID,
 		ChangeType: dbChangeType,
-		Salt:       []byte{},
 	}
 
 	changeType := models.ChangeTypeCreate
 	fileUpload := &models.FileUpload{
-		ID:   ID,
-		Salt: []byte{},
+		ID: ID,
 	}
 
 	s.Require().NoError(s.insertFileUploadHistoryRow(insertedFileUploadHistoryRow))
@@ -153,26 +151,19 @@ func (s *StoreTesteSuite) TestGetFileByChangeRequestID() {
 func (s *StoreTesteSuite) TestInsertFileUpload() {
 	requestID := "request-id"
 	ID := "foo"
-	fileUpload := &models.FileUpload{
-		ID:   ID,
-		Salt: []byte{},
-	}
+	fileUpload := &models.FileUpload{ID: ID}
 
 	s.Run("inserts into file uploads and file uploads history tables", func() {
 		s.Run("using existing ID", func() {
 			expectedFileUpload := fileUpload
 			expectedFileUploadRows := []*dbmodels.FileUploadRow{
-				{
-					ID:   ID,
-					Salt: []byte{},
-				},
+				{ID: ID},
 			}
 			expectedFileUploadHistoryRows := []*dbmodels.FileUploadHistoryRow{
 				{
 					RequestID:  requestID,
 					ID:         ID,
 					ChangeType: dbmodels.ChangeTypeCreate,
-					Salt:       []byte{},
 				},
 			}
 
@@ -201,8 +192,8 @@ func (s *StoreTesteSuite) TestInsertFileUpload() {
 			s.ElementsMatch(expectedFileUploadHistoryRows, fileUploadHistoryRows)
 		})
 		s.Run("and populates ID when empty", func() {
-			fileUpload := &models.FileUpload{Salt: []byte{}}
-			expectedFileUpload := &models.FileUpload{Salt: []byte{}}
+			fileUpload := &models.FileUpload{}
+			expectedFileUpload := &models.FileUpload{}
 
 			tx, err := s.db.Begin()
 			s.Require().NoError(err)
@@ -223,17 +214,13 @@ func (s *StoreTesteSuite) TestInsertFileUpload() {
 			s.Equal(expectedFileUpload, insertedFileUpload)
 
 			expectedFileUploadRows := []*dbmodels.FileUploadRow{
-				{
-					ID:   insertedFileUpload.ID,
-					Salt: []byte{},
-				},
+				{ID: insertedFileUpload.ID},
 			}
 			expectedFileUploadHistoryRows := []*dbmodels.FileUploadHistoryRow{
 				{
 					RequestID:  requestID,
 					ChangeType: dbmodels.ChangeTypeCreate,
 					ID:         insertedFileUpload.ID,
-					Salt:       []byte{},
 				},
 			}
 
@@ -280,7 +267,6 @@ func (s *StoreTesteSuite) TestInsertFileUpload() {
 				RequestID:  requestID,
 				ID:         ID,
 				ChangeType: dbmodels.ChangeTypeCreate,
-				Salt:       []byte{},
 			}
 			expectedFileUploadHistoryRows := []*dbmodels.FileUploadHistoryRow{
 				existingFileUploadHistoryRow,
@@ -315,8 +301,7 @@ func (s *StoreTesteSuite) TestInsertFileUpload() {
 		})
 		s.Run("when inserting duplicate row", func() {
 			existingFileUploadRow := &dbmodels.FileUploadRow{
-				ID:   ID,
-				Salt: []byte{},
+				ID: ID,
 			}
 			expectedFileUploadRows := []*dbmodels.FileUploadRow{
 				existingFileUploadRow,
@@ -357,17 +342,14 @@ func (s *StoreTesteSuite) TestUpdateFileUpload() {
 	ID := "foo"
 	uploadedAtTimestamp := time.Unix(1, 0).UTC()
 	initialFileUploadRow := &dbmodels.FileUploadRow{
-		ID:   ID,
-		Salt: []byte{},
+		ID: ID,
 	}
 	initialFileUploadHistoryRow := &dbmodels.FileUploadHistoryRow{
 		RequestID:  "initial",
-		Salt:       []byte{},
 		ChangeType: dbmodels.ChangeTypeCreate,
 	}
 	newFileUpload := &models.FileUpload{
 		ID:                  ID,
-		Salt:                []byte{},
 		UploadedAtTimestamp: uploadedAtTimestamp,
 	}
 
@@ -379,7 +361,6 @@ func (s *StoreTesteSuite) TestUpdateFileUpload() {
 		expectedFileUploadRows := []*dbmodels.FileUploadRow{
 			{
 				ID:                  ID,
-				Salt:                []byte{},
 				UploadedAtTimestamp: uploadedAtTimestamp,
 			},
 		}
@@ -389,7 +370,6 @@ func (s *StoreTesteSuite) TestUpdateFileUpload() {
 				RequestID:           requestID,
 				ID:                  ID,
 				ChangeType:          dbmodels.ChangeTypeUpdate,
-				Salt:                []byte{},
 				UploadedAtTimestamp: uploadedAtTimestamp,
 			},
 		}
@@ -455,7 +435,6 @@ func (s *StoreTesteSuite) TestUpdateFileUpload() {
 				RequestID:  requestID,
 				ID:         ID,
 				ChangeType: dbmodels.ChangeTypeCreate,
-				Salt:       []byte{},
 			}
 			expectedFileUploadHistoryRows := []*dbmodels.FileUploadHistoryRow{
 				initialFileUploadHistoryRow,

@@ -2,6 +2,7 @@ package dirscanner
 
 import (
 	"context"
+	"encoding/base64"
 	"io/fs"
 	"sync"
 
@@ -94,7 +95,7 @@ func (s *DirScanner) Scan(ctx context.Context) error {
 			LocalPath:           path,
 			Bucket:              s.bucket,
 			Version:             version,
-			Salt:                salt,
+			Salt:                base64.RawStdEncoding.EncodeToString(salt),
 			EncryptionAlgorithm: s.encAlg,
 		}
 

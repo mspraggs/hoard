@@ -12,7 +12,7 @@ type FileUpload struct {
 	LocalPath           string
 	Bucket              string
 	Version             string
-	Salt                []byte
+	Salt                string
 	EncryptionAlgorithm EncryptionAlgorithm
 	CreatedAtTimestamp  time.Time
 	UploadedAtTimestamp time.Time

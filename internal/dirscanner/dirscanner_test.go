@@ -2,6 +2,7 @@ package dirscanner_test
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"io/fs"
 	"path/filepath"
@@ -204,7 +205,7 @@ func newTestFileUploadsFromPaths(
 			Bucket:              bucket,
 			LocalPath:           path,
 			Version:             version,
-			Salt:                salt,
+			Salt:                base64.RawStdEncoding.EncodeToString(salt),
 			EncryptionAlgorithm: encAlg,
 		}
 		uploads[i] = upload
