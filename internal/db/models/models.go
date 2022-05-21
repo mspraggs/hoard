@@ -89,7 +89,7 @@ func NewFileUploadRowFromBusiness(from *models.FileUpload) *FileUploadRow {
 	return &FileUploadRow{
 		ID:                  from.ID,
 		LocalPath:           from.LocalPath,
-		Bucket:              from.LocalPath,
+		Bucket:              from.Bucket,
 		Version:             from.Version,
 		Salt:                from.Salt,
 		CreatedAtTimestamp:  from.CreatedAtTimestamp,
@@ -122,7 +122,7 @@ func NewFileUploadHistoryRowFromBusiness(
 		RequestID:           requestID,
 		ID:                  upload.ID,
 		LocalPath:           upload.LocalPath,
-		Bucket:              upload.LocalPath,
+		Bucket:              upload.Bucket,
 		Version:             upload.Version,
 		Salt:                upload.Salt,
 		EncryptionAlgorithm: NewEncryptionAlgorithmFromBusiness(upload.EncryptionAlgorithm),
