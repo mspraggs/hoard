@@ -35,6 +35,21 @@ func (m *MockFileRegistry) EXPECT() *MockFileRegistryMockRecorder {
 	return m.recorder
 }
 
+// GetUploadedFileUpload mocks base method.
+func (m *MockFileRegistry) GetUploadedFileUpload(ctx context.Context, ID string) (*models.FileUpload, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUploadedFileUpload", ctx, ID)
+	ret0, _ := ret[0].(*models.FileUpload)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUploadedFileUpload indicates an expected call of GetUploadedFileUpload.
+func (mr *MockFileRegistryMockRecorder) GetUploadedFileUpload(ctx, ID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUploadedFileUpload", reflect.TypeOf((*MockFileRegistry)(nil).GetUploadedFileUpload), ctx, ID)
+}
+
 // MarkFileUploadUploaded mocks base method.
 func (m *MockFileRegistry) MarkFileUploadUploaded(ctx context.Context, fileUpload *models.FileUpload) (*models.FileUpload, error) {
 	m.ctrl.T.Helper()

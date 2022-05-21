@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/mspraggs/hoard/internal/models"
 )
 
 //go:generate mockgen -destination=./mocks/fileuploadhandler.go -package=mocks -source=$GOFILE
+
+var log = logrus.New()
 
 // FileRegistry specifies the interface required to register and update the
 // registry of uploaded files.
@@ -16,6 +20,7 @@ type FileRegistry interface {
 		ctx context.Context,
 		fileUpload *models.FileUpload,
 	) (*models.FileUpload, error)
+	GetUploadedFileUpload(ctx context.Context, ID string) (*models.FileUpload, error)
 	MarkFileUploadUploaded(
 		ctx context.Context,
 		fileUpload *models.FileUpload,
@@ -52,12 +57,18 @@ func (h *FileUploadHandler) HandleFileUpload(
 		return nil, fmt.Errorf("error creating file upload: %w", err)
 	}
 
-	if !createdFileUpload.UploadedAtTimestamp.IsZero() {
-		// TODO: Logging
-		return createdFileUpload, nil
+	uploadedFileUpload, err := h.freg.GetUploadedFileUpload(ctx, createdFileUpload.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving uploaded file upload: %w", err)
+	}
+	if uploadedFileUpload != nil {
+		log.
+			WithField("file_upload_id", uploadedFileUpload.ID).
+			Info("Skipping uploaded file upload")
+		return uploadedFileUpload, nil
 	}
 
-	uploadedFileUpload, err := h.fs.StoreFileUpload(ctx, createdFileUpload)
+	uploadedFileUpload, err = h.fs.StoreFileUpload(ctx, createdFileUpload)
 	if err != nil {
 		return nil, fmt.Errorf("error while uploading file to file store: %w", err)
 	}

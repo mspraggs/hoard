@@ -53,6 +53,9 @@ func (s *FileUploadHandlerTestSuite) TestHandleFileUpload() {
 		s.mockFileRegistry.EXPECT().
 			RegisterFileUpload(context.Background(), inputFileUpload).
 			Return(registeredFileUpload, nil)
+		s.mockFileRegistry.EXPECT().
+			GetUploadedFileUpload(context.Background(), registeredFileUpload.ID).
+			Return(nil, nil)
 		s.mockFileStore.EXPECT().
 			StoreFileUpload(context.Background(), registeredFileUpload).
 			Return(registeredFileUpload, nil)
@@ -71,6 +74,9 @@ func (s *FileUploadHandlerTestSuite) TestHandleFileUpload() {
 	s.Run("skips upload of registered file", func() {
 		s.mockFileRegistry.EXPECT().
 			RegisterFileUpload(context.Background(), inputFileUpload).
+			Return(uploadedFileUpload, nil)
+		s.mockFileRegistry.EXPECT().
+			GetUploadedFileUpload(context.Background(), registeredFileUpload.ID).
 			Return(uploadedFileUpload, nil)
 
 		handler := fileuploadhandler.New(s.mockFileStore, s.mockFileRegistry)
@@ -97,10 +103,29 @@ func (s *FileUploadHandlerTestSuite) TestHandleFileUpload() {
 			s.ErrorIs(err, forwardedErr)
 		})
 
+		s.Run("forwarded from GetUploadedFileUpload", func() {
+			s.mockFileRegistry.EXPECT().
+				RegisterFileUpload(context.Background(), inputFileUpload).
+				Return(registeredFileUpload, nil)
+			s.mockFileRegistry.EXPECT().
+				GetUploadedFileUpload(context.Background(), registeredFileUpload.ID).
+				Return(nil, forwardedErr)
+
+			handler := fileuploadhandler.New(s.mockFileStore, s.mockFileRegistry)
+
+			handledFileUpload, err := handler.HandleFileUpload(context.Background(), inputFileUpload)
+
+			s.Require().Nil(handledFileUpload)
+			s.ErrorIs(err, forwardedErr)
+		})
+
 		s.Run("forwarded from StoreFileUpload", func() {
 			s.mockFileRegistry.EXPECT().
 				RegisterFileUpload(context.Background(), inputFileUpload).
 				Return(registeredFileUpload, nil)
+			s.mockFileRegistry.EXPECT().
+				GetUploadedFileUpload(context.Background(), registeredFileUpload.ID).
+				Return(nil, nil)
 			s.mockFileStore.EXPECT().
 				StoreFileUpload(context.Background(), registeredFileUpload).
 				Return(nil, forwardedErr)
@@ -117,6 +142,9 @@ func (s *FileUploadHandlerTestSuite) TestHandleFileUpload() {
 			s.mockFileRegistry.EXPECT().
 				RegisterFileUpload(context.Background(), inputFileUpload).
 				Return(registeredFileUpload, nil)
+			s.mockFileRegistry.EXPECT().
+				GetUploadedFileUpload(context.Background(), registeredFileUpload.ID).
+				Return(nil, nil)
 			s.mockFileStore.EXPECT().
 				StoreFileUpload(context.Background(), registeredFileUpload).
 				Return(registeredFileUpload, nil)
