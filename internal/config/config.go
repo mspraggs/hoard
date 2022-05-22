@@ -3,7 +3,22 @@ package config
 import (
 	"time"
 
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
 	"github.com/mspraggs/hoard/internal/models"
+)
+
+// LogLevel is the YAML configuration representation of the configured log
+// level.
+type LogLevel string
+
+const (
+	LogLevelDebug    LogLevel = "DEBUG"
+	LogLevelInfo     LogLevel = "INFO"
+	LogLevelWarning  LogLevel = "WARNING"
+	LogLevelError    LogLevel = "ERROR"
+	LogLevelCritical LogLevel = "DEBUG"
 )
 
 // ChecksumAlgorithm is the YAML configuration representation of a configured
@@ -47,10 +62,17 @@ const (
 // Config contains all configuration necessary for the application to run.
 type Config struct {
 	NumThreads  int          `yaml:"num_threads"`
+	Logging     LogConfig    `yaml:"logging"`
 	Registry    RegConfig    `yaml:"registry"`
 	Store       StoreConfig  `yaml:"store"`
 	Uploads     UploadConfig `yaml:"uploads"`
 	Directories []DirConfig  `yaml:"directories"`
+}
+
+// LogConfig contains all configuration relating to logs.
+type LogConfig struct {
+	Level    LogLevel `yaml:"level"`
+	FilePath string   `yaml:"file_path"`
 }
 
 // RegConfig contains all configuration relating to the file registry.
@@ -77,6 +99,22 @@ type DirConfig struct {
 	EncryptionAlgorithm EncryptionAlgorithm `yaml:"encryption_algorithm"`
 	StorageClass        StorageClass        `yaml:"storage_class"`
 	RetentionPeriod     time.Duration       `yaml:"retention_period"`
+}
+
+// ToBusiness converts the YAML representation of a log level to the equivalent
+// business model representation.
+func (l LogLevel) ToBusiness() zapcore.Level {
+	switch l {
+	case LogLevelDebug:
+		return zap.DebugLevel
+	case LogLevelInfo:
+		return zap.InfoLevel
+	case LogLevelWarning:
+		return zap.WarnLevel
+	case LogLevelError:
+		return zap.ErrorLevel
+	}
+	return zap.InfoLevel
 }
 
 // ToBusiness converts the YAML represetnation of a checksum algorithm to the

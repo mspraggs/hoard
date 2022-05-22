@@ -6,12 +6,10 @@ import (
 	"io/fs"
 	"sync"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/mspraggs/hoard/internal/models"
 )
-
-var log = logrus.New()
 
 //go:generate mockgen -destination=./mocks/dirscanner.go -package=mocks -source=$GOFILE
 
@@ -48,6 +46,7 @@ type DirScanner struct {
 	uploadHandlers    []FileUploadHandler
 	uploadQueue       chan *models.FileUpload
 	wg                *sync.WaitGroup
+	log               *zap.SugaredLogger
 }
 
 // Scan traverses the filesystem and runs all registered uploadHandlers on all
@@ -67,27 +66,25 @@ func (s *DirScanner) Scan(ctx context.Context) error {
 		default:
 		}
 
-		log.WithField("path", path).Debug("Handling path")
+		s.log.Debugw("Handling path", "path", path)
 		if err != nil {
-			log.WithError(err).Warn("Skipping file due to error")
+			s.log.Warnw("Skipping file due to error", "error", err, "path", path)
 			return nil
 		}
 
 		if !d.Type().IsRegular() {
-			log.
-				WithFields(logrus.Fields{"path": path, "type": d.Type()}).
-				Info("Skipping irregular file type")
+			s.log.Infow("Skipping irregular file type", "path", path, "type", d.Type())
 			return nil
 		}
 
 		version, err := s.vc.CalculateVersion(path)
 		if err != nil {
-			log.WithField("path", path).WithError(err).Warn("Failed to calculate file version")
+			s.log.Warnw("Failed to calculate file version", "error", err, "path", path)
 			return nil
 		}
 		salt, err := s.salter.Salt(path)
 		if err != nil {
-			log.WithField("path", path).WithError(err).Warn("Failed to generate file salt")
+			s.log.Warnw("Failed to generate file salt", "error", err, "path", path)
 			return nil
 		}
 
@@ -123,10 +120,7 @@ func (s *DirScanner) handleFileUploads(ctx context.Context) {
 			for _, handler := range s.uploadHandlers {
 				_, err := handler.HandleFileUpload(ctx, fu)
 				if err != nil {
-					log.
-						WithError(err).
-						WithField("file_upload", fu).
-						Warn("Error handling file upload")
+					s.log.Warnw("Error handling file upload", "error", err, "file_upload", fu)
 				}
 			}
 		case <-ctx.Done():

@@ -3,10 +3,13 @@ package uploader
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"go.uber.org/zap"
 
 	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
+	"github.com/mspraggs/hoard/internal/util"
 )
 
 //go:generate mockgen -destination=./mocks/multi_uploader.go -package=mocks -source=$GOFILE
@@ -37,12 +40,14 @@ type MultiUploader struct {
 	maxChunkSize int64
 	numChunks    int
 	client       MultiClient
+	log          *zap.SugaredLogger
 }
 
 // NewMultiUploader instantiates a new MultiUploader instance using the provided
 // chunk size, number of chunks and client.
 func NewMultiUploader(chunkSize int64, numChunks int, client MultiClient) *MultiUploader {
-	return &MultiUploader{chunkSize, numChunks, client}
+	log := util.MustNewLogger()
+	return &MultiUploader{chunkSize, numChunks, client, log}
 }
 
 // Upload uploads the contents of the provided file upload to the relevant
@@ -52,15 +57,33 @@ func (u *MultiUploader) Upload(
 	upload *fsmodels.FileUpload,
 ) error {
 
+	defer reportElapsedFileUploadTime(u.log, time.Now(), upload)
+
+	u.log.Infow(
+		"Uploading file with multi-uploader",
+		"key", upload.Key,
+		"num_parts", u.numChunks,
+	)
+
 	uploadID, err := u.createMultiPartUpload(ctx, upload)
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < u.numChunks; i++ {
+		u.log.Debugw(
+			"Upload part start",
+			"key", upload.Key,
+			"part", i,
+		)
 		if err := u.uploadPart(ctx, uploadID, upload); err != nil {
 			return fmt.Errorf("unable to upload part: %w", err)
 		}
+		u.log.Debugw(
+			"Upload part finish",
+			"key", upload.Key,
+			"part", i,
+		)
 	}
 
 	return u.closeMultiPartUpload(ctx, uploadID, upload)

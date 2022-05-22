@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/mspraggs/hoard/internal/models"
+	"github.com/mspraggs/hoard/internal/util"
 )
 
 // DirScannerBuilder implements the builder pattern for DirScanner objects.
@@ -95,6 +96,7 @@ func (b *DirScannerBuilder) AddFileUploadHandler(h FileUploadHandler) *DirScanne
 
 // Build constructs a DirScanner instance using the values held by the builder.
 func (b *DirScannerBuilder) Build() *DirScanner {
+	log := util.MustNewLogger()
 	return &DirScanner{
 		b.fs,
 		b.vc,
@@ -105,5 +107,6 @@ func (b *DirScannerBuilder) Build() *DirScanner {
 		b.uploadHandlers,
 		nil,
 		&sync.WaitGroup{},
+		log,
 	}
 }

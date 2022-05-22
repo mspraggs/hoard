@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/mspraggs/hoard/internal/models"
+	"github.com/mspraggs/hoard/internal/util"
 )
 
 //go:generate mockgen -destination=./mocks/fileuploadhandler.go -package=mocks -source=$GOFILE
-
-var log = logrus.New()
 
 // FileRegistry specifies the interface required to register and update the
 // registry of uploaded files.
@@ -37,12 +36,14 @@ type FileStore interface {
 type FileUploadHandler struct {
 	fs   FileStore
 	freg FileRegistry
+	log  *zap.SugaredLogger
 }
 
 // New instantiates a new FileUploadHandler instance with provided file store and
 // registry.
 func New(fs FileStore, freg FileRegistry) *FileUploadHandler {
-	return &FileUploadHandler{fs, freg}
+	log := util.MustNewLogger()
+	return &FileUploadHandler{fs, freg, log}
 }
 
 // HandleFileUpload registers the provided file upload in the file registry and
@@ -52,19 +53,28 @@ func (h *FileUploadHandler) HandleFileUpload(
 	fileUpload *models.FileUpload,
 ) (*models.FileUpload, error) {
 
+	h.log.Infow("Handling file upload", "path", fileUpload.LocalPath)
+
 	createdFileUpload, err := h.freg.RegisterFileUpload(ctx, fileUpload)
 	if err != nil {
 		return nil, fmt.Errorf("error creating file upload: %w", err)
 	}
+	h.log.Infow(
+		"Registered file upload",
+		"id", createdFileUpload.ID,
+		"path", createdFileUpload.LocalPath,
+	)
 
 	uploadedFileUpload, err := h.freg.GetUploadedFileUpload(ctx, createdFileUpload.ID)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving uploaded file upload: %w", err)
 	}
 	if uploadedFileUpload != nil {
-		log.
-			WithField("file_upload_id", uploadedFileUpload.ID).
-			Info("Skipping uploaded file upload")
+		h.log.Infow(
+			"Skipping uploaded file upload",
+			"id", uploadedFileUpload.ID,
+			"path", uploadedFileUpload.LocalPath,
+		)
 		return uploadedFileUpload, nil
 	}
 
@@ -72,11 +82,21 @@ func (h *FileUploadHandler) HandleFileUpload(
 	if err != nil {
 		return nil, fmt.Errorf("error while uploading file to file store: %w", err)
 	}
+	h.log.Infow(
+		"Stored file upload in storage backend",
+		"id", uploadedFileUpload.ID,
+		"path", uploadedFileUpload.LocalPath,
+	)
 
 	uploadedAndMarkedFileUpload, err := h.freg.MarkFileUploadUploaded(ctx, uploadedFileUpload)
 	if err != nil {
 		return nil, fmt.Errorf("error marking file upload as uploaded: %w", err)
 	}
+	h.log.Infow(
+		"Marked file upload as uploaded",
+		"id", uploadedAndMarkedFileUpload.ID,
+		"path", uploadedAndMarkedFileUpload.LocalPath,
+	)
 
 	return uploadedAndMarkedFileUpload, nil
 }

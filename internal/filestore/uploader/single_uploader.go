@@ -3,9 +3,13 @@ package uploader
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"go.uber.org/zap"
+
 	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
+	"github.com/mspraggs/hoard/internal/util"
 )
 
 //go:generate mockgen -destination=./mocks/single_uploader.go -package=mocks -source=$GOFILE
@@ -24,12 +28,14 @@ type SingleClient interface {
 // a single operation.
 type SingleUploader struct {
 	client SingleClient
+	log    *zap.SugaredLogger
 }
 
 // NewSingleUploader instantiates a SingleUploader instance with the provided
 // client.
 func NewSingleUploader(client SingleClient) *SingleUploader {
-	return &SingleUploader{client}
+	log := util.MustNewLogger()
+	return &SingleUploader{client, log}
 }
 
 // Upload uploads the contents of the supplied file upload to the relevant
@@ -38,6 +44,13 @@ func (u *SingleUploader) Upload(
 	ctx context.Context,
 	upload *fsmodels.FileUpload,
 ) error {
+
+	defer reportElapsedFileUploadTime(u.log, time.Now(), upload)
+
+	u.log.Infow(
+		"Uploading file with single-uploader",
+		"key", upload.Key,
+	)
 
 	input := upload.ToPutObjectInput()
 
