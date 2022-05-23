@@ -39,9 +39,11 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 	empty := ""
 	uploadID := "some-upload"
 	body := []byte{0, 1, 2, 3, 4, 5, 6, 7}
+	bodySize := int64(len(body))
 	key := "foo"
 	maxChunkSize := 5
 	emptyMD5 := "1B2M2Y8AsgTpgAmY7PhCfg=="
+	eTags := []string{"one", "two"}
 
 	createMultipartUploadInput := &s3.CreateMultipartUploadInput{
 		Key:                  &key,
@@ -56,8 +58,20 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 		UploadId: &uploadID,
 	}
 	completeUploadInput := &s3.CompleteMultipartUploadInput{
-		Key:                  &key,
-		Bucket:               &empty,
+		Key:    &key,
+		Bucket: &empty,
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: []types.CompletedPart{
+				{
+					PartNumber: 1,
+					ETag:       &eTags[0],
+				},
+				{
+					PartNumber: 2,
+					ETag:       &eTags[1],
+				},
+			},
+		},
 		SSECustomerKey:       &empty,
 		SSECustomerKeyMD5:    &emptyMD5,
 		SSECustomerAlgorithm: &empty,
@@ -70,8 +84,8 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 			Body: bytes.NewReader(body),
 		}
 		uploadPartInputs := []*s3.UploadPartInput{
-			newTestUploadPartInput(upload, uploadID, int64(maxChunkSize)),
-			newTestUploadPartInput(upload, uploadID, int64(maxChunkSize)),
+			newTestUploadPartInput(upload, uploadID, 1, int64(maxChunkSize)),
+			newTestUploadPartInput(upload, uploadID, 2, int64(3)),
 		}
 
 		s.mockClient.EXPECT().
@@ -80,20 +94,30 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 		gomock.InOrder(
 			s.mockClient.EXPECT().
 				UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInputs[0])).
-				DoAndReturn(s.makeDoUploadPart(body[:maxChunkSize], maxChunkSize)),
+				DoAndReturn(s.makeDoUploadPart(body[:maxChunkSize], maxChunkSize, eTags[0])),
 			s.mockClient.EXPECT().
 				UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInputs[1])).
-				DoAndReturn(s.makeDoUploadPart(body[maxChunkSize:], maxChunkSize)),
+				DoAndReturn(s.makeDoUploadPart(body[maxChunkSize:], maxChunkSize, eTags[1])),
 		)
 		s.mockClient.EXPECT().
 			CompleteMultipartUpload(context.Background(), completeUploadInput).
 			Return(nil, nil)
 
-		uploader := uploader.NewMultiUploader(int64(maxChunkSize), 2, s.mockClient)
+		uploader := uploader.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
 
 		err := uploader.Upload(context.Background(), upload)
 
 		s.NoError(err)
+	})
+
+	s.Run("returns error for zero chunk size", func() {
+		upload := &fsmodels.FileUpload{Key: key}
+
+		uploader := uploader.NewMultiUploader(bodySize, 0, nil)
+
+		err := uploader.Upload(context.Background(), upload)
+
+		s.ErrorContains(err, "invalid chunk size")
 	})
 
 	s.Run("wraps and returns error", func() {
@@ -105,7 +129,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 				CreateMultipartUpload(context.Background(), createMultipartUploadInput).
 				Return(nil, expectedErr)
 
-			uploader := uploader.NewMultiUploader(0, 2, s.mockClient)
+			uploader := uploader.NewMultiUploader(bodySize, 1, s.mockClient)
 
 			err := uploader.Upload(context.Background(), upload)
 
@@ -116,7 +140,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 			upload := &fsmodels.FileUpload{Key: key}
 
 			uploadPartInput := newTestUploadPartInput(
-				upload, uploadID, int64(maxChunkSize),
+				upload, uploadID, 1, int64(maxChunkSize),
 			)
 
 			s.mockClient.EXPECT().
@@ -126,7 +150,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 				UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInput)).
 				Return(nil, expectedErr)
 
-			uploader := uploader.NewMultiUploader(int64(maxChunkSize), 2, s.mockClient)
+			uploader := uploader.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
 
 			err := uploader.Upload(context.Background(), upload)
 
@@ -139,8 +163,8 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 				Body: bytes.NewReader(body),
 			}
 			uploadPartInputs := []*s3.UploadPartInput{
-				newTestUploadPartInput(upload, uploadID, int64(maxChunkSize)),
-				newTestUploadPartInput(upload, uploadID, int64(maxChunkSize)),
+				newTestUploadPartInput(upload, uploadID, 1, int64(maxChunkSize)),
+				newTestUploadPartInput(upload, uploadID, 2, int64(3)),
 			}
 
 			s.mockClient.EXPECT().
@@ -149,16 +173,16 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 			gomock.InOrder(
 				s.mockClient.EXPECT().
 					UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInputs[0])).
-					DoAndReturn(s.makeDoUploadPart(body[:maxChunkSize], maxChunkSize)),
+					DoAndReturn(s.makeDoUploadPart(body[:maxChunkSize], maxChunkSize, eTags[0])),
 				s.mockClient.EXPECT().
 					UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInputs[1])).
-					DoAndReturn(s.makeDoUploadPart(body[maxChunkSize:], maxChunkSize)),
+					DoAndReturn(s.makeDoUploadPart(body[maxChunkSize:], maxChunkSize, eTags[1])),
 			)
 			s.mockClient.EXPECT().
 				CompleteMultipartUpload(context.Background(), completeUploadInput).
 				Return(nil, expectedErr)
 
-			uploader := uploader.NewMultiUploader(int64(maxChunkSize), 2, s.mockClient)
+			uploader := uploader.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
 
 			err := uploader.Upload(context.Background(), upload)
 
@@ -170,6 +194,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 func (s *MultiUploaderTestSuite) makeDoUploadPart(
 	expectedBytes []byte,
 	maxChunkSize int,
+	eTag string,
 ) func(context.Context, *s3.UploadPartInput, ...func(*s3.Options)) (*s3.UploadPartOutput, error) {
 
 	return func(
@@ -187,14 +212,15 @@ func (s *MultiUploaderTestSuite) makeDoUploadPart(
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return &s3.UploadPartOutput{ETag: &eTag}, nil
 	}
 }
 
 func newTestUploadPartInput(
 	upload *fsmodels.FileUpload,
 	uploadID string,
-	maxChunkSize int64,
+	chunkNum int32,
+	chunkSize int64,
 ) *s3.UploadPartInput {
 
 	empty := ""
@@ -203,11 +229,13 @@ func newTestUploadPartInput(
 		Key:                  &upload.Key,
 		UploadId:             &uploadID,
 		Bucket:               &empty,
+		PartNumber:           chunkNum,
+		ContentLength:        chunkSize,
 		SSECustomerKey:       &empty,
 		SSECustomerKeyMD5:    &emptyMD5,
 		SSECustomerAlgorithm: &empty,
 		ChecksumAlgorithm:    upload.ChecksumAlgorithm,
-		Body:                 &io.LimitedReader{R: upload.Body, N: maxChunkSize},
+		Body:                 &io.LimitedReader{R: upload.Body, N: chunkSize},
 	}
 }
 

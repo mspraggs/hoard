@@ -50,6 +50,10 @@ type CreateMultipartUploadInputOption func(*CreateMultipartUploadInput)
 // multi-part upload.
 type UploadPartInput s3.UploadPartInput
 
+// UploadPartOutput defines the input data returned after uploading one part of
+// a multi-part upload.
+type UploadPartOutput s3.UploadPartOutput
+
 // UploadPartInputOption defines a mechansim to manipulate multi-part part
 // upload input objects.
 type UploadPartInputOption func(*UploadPartInput)
@@ -160,7 +164,11 @@ func (fu *FileUpload) ToCreateMultipartUploadInput() *CreateMultipartUploadInput
 
 // ToUploadPartInput constructs an UploadPartInput from the file upload this
 // method is called on.
-func (fu *FileUpload) ToUploadPartInput(uploadID string, chunkSize int64) *UploadPartInput {
+func (fu *FileUpload) ToUploadPartInput(
+	uploadID string,
+	chunkNum int32,
+	chunkSize int64,
+) *UploadPartInput {
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	sseKeyMD5 := md5Hash(fu.EncryptionKey)
@@ -168,6 +176,8 @@ func (fu *FileUpload) ToUploadPartInput(uploadID string, chunkSize int64) *Uploa
 		UploadId:             &uploadID,
 		Bucket:               &fu.Bucket,
 		Key:                  &fu.Key,
+		PartNumber:           chunkNum,
+		ContentLength:        chunkSize,
 		SSECustomerKey:       &sseKey,
 		SSECustomerKeyMD5:    &sseKeyMD5,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
@@ -182,14 +192,30 @@ func (fu *FileUpload) ToUploadPartInput(uploadID string, chunkSize int64) *Uploa
 // from the file upload this method is called on.
 func (fu *FileUpload) ToCompleteMultipartUploadInput(
 	uploadID string,
+	parts []*UploadPartOutput,
 ) *CompleteMultipartUploadInput {
+
+	completedParts := make([]types.CompletedPart, len(parts))
+	for i, part := range parts {
+		completedParts[i] = types.CompletedPart{
+			ChecksumCRC32:  part.ChecksumCRC32,
+			ChecksumCRC32C: part.ChecksumCRC32C,
+			ChecksumSHA1:   part.ChecksumSHA1,
+			ChecksumSHA256: part.ChecksumSHA256,
+			ETag:           part.ETag,
+			PartNumber:     int32(i + 1),
+		}
+	}
 
 	sseKey := base64.StdEncoding.EncodeToString(fu.EncryptionKey)
 	sseKeyMD5 := md5Hash(fu.EncryptionKey)
 	input := &CompleteMultipartUploadInput{
-		UploadId:             &uploadID,
-		Bucket:               &fu.Bucket,
-		Key:                  &fu.Key,
+		UploadId: &uploadID,
+		Bucket:   &fu.Bucket,
+		Key:      &fu.Key,
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: completedParts,
+		},
 		SSECustomerKey:       &sseKey,
 		SSECustomerKeyMD5:    &sseKeyMD5,
 		SSECustomerAlgorithm: (*string)(&fu.EncryptionAlgorithm),
