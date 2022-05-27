@@ -13,10 +13,10 @@ import (
 	"github.com/mspraggs/hoard/internal/config"
 	"github.com/mspraggs/hoard/internal/db"
 	"github.com/mspraggs/hoard/internal/dirscanner"
-	"github.com/mspraggs/hoard/internal/filestore"
-	"github.com/mspraggs/hoard/internal/filestore/uploader"
 	"github.com/mspraggs/hoard/internal/processor"
 	"github.com/mspraggs/hoard/internal/registry"
+	"github.com/mspraggs/hoard/internal/store"
+	"github.com/mspraggs/hoard/internal/store/uploader"
 	"github.com/mspraggs/hoard/internal/util"
 )
 
@@ -118,7 +118,7 @@ func processDirectory(
 		util.NewRequestIDMaker(),
 	)
 
-	store := filestore.New(
+	store := store.New(
 		fs, makeUploaderConstructor(client, config.Uploads.MultiUploadThreshold),
 		config.Uploads.ChecksumAlgorithm.ToBusiness(),
 		util.NewEncryptionKeyGenerator([]byte(secret)),
@@ -139,8 +139,8 @@ func processDirectory(
 	return scanner.Scan(context.Background())
 }
 
-func makeUploaderConstructor(client *s3.Client, chunksize int64) filestore.UploaderConstructor {
-	return func(file fs.File) (filestore.Uploader, error) {
+func makeUploaderConstructor(client *s3.Client, chunksize int64) store.UploaderConstructor {
+	return func(file fs.File) (store.Uploader, error) {
 		info, err := file.Stat()
 		if err != nil {
 			return nil, err

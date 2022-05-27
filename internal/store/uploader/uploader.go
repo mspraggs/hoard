@@ -5,7 +5,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/mspraggs/hoard/internal/filestore/models"
+	"github.com/mspraggs/hoard/internal/store/models"
 )
 
 func reportElapsedFileUploadTime(

@@ -80,31 +80,31 @@ func (mr *MockRegistryMockRecorder) RegisterFileUpload(ctx, fileUpload interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterFileUpload", reflect.TypeOf((*MockRegistry)(nil).RegisterFileUpload), ctx, fileUpload)
 }
 
-// MockFileStore is a mock of FileStore interface.
-type MockFileStore struct {
+// MockStore is a mock of Store interface.
+type MockStore struct {
 	ctrl     *gomock.Controller
-	recorder *MockFileStoreMockRecorder
+	recorder *MockStoreMockRecorder
 }
 
-// MockFileStoreMockRecorder is the mock recorder for MockFileStore.
-type MockFileStoreMockRecorder struct {
-	mock *MockFileStore
+// MockStoreMockRecorder is the mock recorder for MockStore.
+type MockStoreMockRecorder struct {
+	mock *MockStore
 }
 
-// NewMockFileStore creates a new mock instance.
-func NewMockFileStore(ctrl *gomock.Controller) *MockFileStore {
-	mock := &MockFileStore{ctrl: ctrl}
-	mock.recorder = &MockFileStoreMockRecorder{mock}
+// NewMockStore creates a new mock instance.
+func NewMockStore(ctrl *gomock.Controller) *MockStore {
+	mock := &MockStore{ctrl: ctrl}
+	mock.recorder = &MockStoreMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockFileStore) EXPECT() *MockFileStoreMockRecorder {
+func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
 }
 
 // StoreFileUpload mocks base method.
-func (m *MockFileStore) StoreFileUpload(ctx context.Context, FileUpload *models.FileUpload) (*models.FileUpload, error) {
+func (m *MockStore) StoreFileUpload(ctx context.Context, FileUpload *models.FileUpload) (*models.FileUpload, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StoreFileUpload", ctx, FileUpload)
 	ret0, _ := ret[0].(*models.FileUpload)
@@ -113,7 +113,7 @@ func (m *MockFileStore) StoreFileUpload(ctx context.Context, FileUpload *models.
 }
 
 // StoreFileUpload indicates an expected call of StoreFileUpload.
-func (mr *MockFileStoreMockRecorder) StoreFileUpload(ctx, FileUpload interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) StoreFileUpload(ctx, FileUpload interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreFileUpload", reflect.TypeOf((*MockFileStore)(nil).StoreFileUpload), ctx, FileUpload)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreFileUpload", reflect.TypeOf((*MockStore)(nil).StoreFileUpload), ctx, FileUpload)
 }

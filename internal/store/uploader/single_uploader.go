@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"go.uber.org/zap"
 
-	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
+	fsmodels "github.com/mspraggs/hoard/internal/store/models"
 	"github.com/mspraggs/hoard/internal/util"
 )
 

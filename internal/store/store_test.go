@@ -1,4 +1,4 @@
-package filestore_test
+package store_test
 
 import (
 	"context"
@@ -10,10 +10,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mspraggs/hoard/internal/filestore"
-	"github.com/mspraggs/hoard/internal/filestore/mocks"
-	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
 	"github.com/mspraggs/hoard/internal/models"
+	"github.com/mspraggs/hoard/internal/store"
+	"github.com/mspraggs/hoard/internal/store/mocks"
+	fsmodels "github.com/mspraggs/hoard/internal/store/models"
 )
 
 var errFileNotFound = errors.New("file not found")
@@ -48,7 +48,7 @@ func (f *fakeFile) Stat() (fs.FileInfo, error) {
 	return nil, nil
 }
 
-func TestFileStoreTestSuite(t *testing.T) {
+func TestStoreTestSuite(t *testing.T) {
 	suite.Run(t, new(FilestoreTestSuite))
 }
 
@@ -87,7 +87,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			Upload(context.Background(), fsFileUpload).
 			Return(nil)
 
-		fakeUploaderConstructor := func(f fs.File) (filestore.Uploader, error) {
+		fakeUploaderConstructor := func(f fs.File) (store.Uploader, error) {
 			s.Require().Equal(fakeFile, f)
 			return mockUploader, nil
 		}
@@ -164,7 +164,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			s.mockEncKeyGen.EXPECT().
 				GenerateKey(businessFileUpload).Return(encKey, nil)
 
-			fakeUploaderConstructor := func(f fs.File) (filestore.Uploader, error) {
+			fakeUploaderConstructor := func(f fs.File) (store.Uploader, error) {
 				s.Require().Equal(fakeFile, f)
 				return nil, expectedErr
 			}
@@ -209,7 +209,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 				Upload(context.Background(), fsFileUpload).
 				Return(expectedErr)
 
-			fakeUploaderConstructor := func(f fs.File) (filestore.Uploader, error) {
+			fakeUploaderConstructor := func(f fs.File) (store.Uploader, error) {
 				s.Require().Equal(fakeFile, f)
 				return mockUploader, nil
 			}
@@ -229,10 +229,10 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 
 func (s *FilestoreTestSuite) newStore(
 	fs fs.FS,
-	uploaderConstructor filestore.UploaderConstructor,
-) *filestore.FileStore {
+	uploaderConstructor store.UploaderConstructor,
+) *store.Store {
 
-	return filestore.New(
+	return store.New(
 		fs, uploaderConstructor, models.ChecksumAlgorithmSHA256, s.mockEncKeyGen,
 		models.StorageClassStandard,
 	)

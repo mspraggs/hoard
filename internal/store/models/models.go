@@ -74,13 +74,13 @@ type PutObjectInput s3.PutObjectInput
 // instances.
 type PutObjectInputOption func(*PutObjectInput)
 
-// NewEncryptionKeyFromBusiness creates a filestore EncryptionKey from a
+// NewEncryptionKeyFromBusiness creates a store EncryptionKey from a
 // business EncryptionKey.
 func NewEncryptionKeyFromBusiness(key models.EncryptionKey) EncryptionKey {
 	return EncryptionKey(key)
 }
 
-// NewEncryptionAlgorithmFromBusiness creates a filestore EncryptionAlgorithm
+// NewEncryptionAlgorithmFromBusiness creates a store EncryptionAlgorithm
 // from a business EncryptionAlgorithm.
 func NewEncryptionAlgorithmFromBusiness(alg models.EncryptionAlgorithm) EncryptionAlgorithm {
 	switch alg {
@@ -92,7 +92,7 @@ func NewEncryptionAlgorithmFromBusiness(alg models.EncryptionAlgorithm) Encrypti
 	}
 }
 
-// NewChecksumAlgorithmFromBusiness creates a filestore ChecksumAlgorithm from a
+// NewChecksumAlgorithmFromBusiness creates a store ChecksumAlgorithm from a
 // business ChecksumAlgorithm.
 func NewChecksumAlgorithmFromBusiness(alg models.ChecksumAlgorithm) ChecksumAlgorithm {
 	switch alg {
@@ -104,7 +104,7 @@ func NewChecksumAlgorithmFromBusiness(alg models.ChecksumAlgorithm) ChecksumAlgo
 	}
 }
 
-// NewStorageClassFromBusiness creates a filestore StorageClass from a business
+// NewStorageClassFromBusiness creates a store StorageClass from a business
 // StorageClass.
 func NewStorageClassFromBusiness(sc models.StorageClass) StorageClass {
 	switch sc {
@@ -121,7 +121,7 @@ func NewStorageClassFromBusiness(sc models.StorageClass) StorageClass {
 	}
 }
 
-// NewFileUploadFromBusiness creates a filestore file upload model from the
+// NewFileUploadFromBusiness creates a store file upload model from the
 // provided business file upload, encryption key and checksum algorithm.
 func NewFileUploadFromBusiness(
 	encryptionAlgorithm models.EncryptionAlgorithm,

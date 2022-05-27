@@ -26,22 +26,22 @@ type Registry interface {
 	) (*models.FileUpload, error)
 }
 
-// FileStore specifies the interface required to upload files.
-type FileStore interface {
+// Store specifies the interface required to upload files.
+type Store interface {
 	StoreFileUpload(ctx context.Context, FileUpload *models.FileUpload) (*models.FileUpload, error)
 }
 
 // Processor encapsulates the logic required to register a file upload and store
 // it in the file store.
 type Processor struct {
-	fs   FileStore
+	fs   Store
 	freg Registry
 	log  *zap.SugaredLogger
 }
 
 // New instantiates a new Processor instance with provided file store and
 // registry.
-func New(fs FileStore, freg Registry) *Processor {
+func New(fs Store, freg Registry) *Processor {
 	log := util.MustNewLogger()
 	return &Processor{fs, freg, log}
 }

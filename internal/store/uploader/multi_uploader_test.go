@@ -15,9 +15,9 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/suite"
 
-	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
-	"github.com/mspraggs/hoard/internal/filestore/uploader"
-	"github.com/mspraggs/hoard/internal/filestore/uploader/mocks"
+	fsmodels "github.com/mspraggs/hoard/internal/store/models"
+	"github.com/mspraggs/hoard/internal/store/uploader"
+	"github.com/mspraggs/hoard/internal/store/uploader/mocks"
 )
 
 type MultiUploaderTestSuite struct {

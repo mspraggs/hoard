@@ -1,15 +1,15 @@
-package filestore
+package store
 
 import (
 	"context"
 	"fmt"
 	"io/fs"
 
-	fsmodels "github.com/mspraggs/hoard/internal/filestore/models"
 	"github.com/mspraggs/hoard/internal/models"
+	fsmodels "github.com/mspraggs/hoard/internal/store/models"
 )
 
-//go:generate mockgen -destination=./mocks/filestore.go -package=mocks -source=$GOFILE
+//go:generate mockgen -destination=./mocks/store.go -package=mocks -source=$GOFILE
 
 type BucketSelector interface {
 	SelectBucket(fileUpload *models.FileUpload) string
@@ -30,9 +30,9 @@ type Uploader interface {
 // from a file object.
 type UploaderConstructor func(file fs.File) (Uploader, error)
 
-// FileStore encapsulates the logic required to store a file in a storage
+// Store encapsulates the logic required to store a file in a storage
 // bucket.
-type FileStore struct {
+type Store struct {
 	fs                  fs.FS
 	ekg                 EncryptionKeyGenerator
 	csAlg               models.ChecksumAlgorithm
@@ -48,14 +48,14 @@ func New(
 	csAlg models.ChecksumAlgorithm,
 	ekg EncryptionKeyGenerator,
 	sc models.StorageClass,
-) *FileStore {
+) *Store {
 
-	return &FileStore{fs, ekg, csAlg, sc, uploaderConstructor}
+	return &Store{fs, ekg, csAlg, sc, uploaderConstructor}
 }
 
 // StoreFileUpload loads a file, generates an encryption key from that file and
 // uploads it to the file bucket using the relevant Uploader instance.
-func (s *FileStore) StoreFileUpload(
+func (s *Store) StoreFileUpload(
 	ctx context.Context,
 	fileUpload *models.FileUpload,
 ) (*models.FileUpload, error) {
