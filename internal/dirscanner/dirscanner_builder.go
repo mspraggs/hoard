@@ -17,7 +17,7 @@ type DirScannerBuilder struct {
 	bucket            string
 	encAlg            models.EncryptionAlgorithm
 	numHandlerThreads int
-	uploadHandlers    []FileUploadHandler
+	processor         []Processor
 }
 
 // NewBuilder creates a new DirScannerBuilder object with a set of default
@@ -87,10 +87,10 @@ func (b *DirScannerBuilder) WithNumHandlerThreads(n int) *DirScannerBuilder {
 	return b
 }
 
-// WithVersionCalculator appends a file upload handler instance to the array of
-// handlers to be used when the DirScanner is created.
-func (b *DirScannerBuilder) AddFileUploadHandler(h FileUploadHandler) *DirScannerBuilder {
-	b.uploadHandlers = append(b.uploadHandlers, h)
+// AddProcessor appends a processor instance to the array of processor to be
+// used when the DirScanner is created.
+func (b *DirScannerBuilder) AddProcessor(h Processor) *DirScannerBuilder {
+	b.processor = append(b.processor, h)
 	return b
 }
 
@@ -104,7 +104,7 @@ func (b *DirScannerBuilder) Build() *DirScanner {
 		b.bucket,
 		b.encAlg,
 		b.numHandlerThreads,
-		b.uploadHandlers,
+		b.processor,
 		nil,
 		&sync.WaitGroup{},
 		log,

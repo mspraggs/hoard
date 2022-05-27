@@ -1,4 +1,4 @@
-package fileuploadhandler
+package processor
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/mspraggs/hoard/internal/util"
 )
 
-//go:generate mockgen -destination=./mocks/fileuploadhandler.go -package=mocks -source=$GOFILE
+//go:generate mockgen -destination=./mocks/processor.go -package=mocks -source=$GOFILE
 
 // FileRegistry specifies the interface required to register and update the
 // registry of uploaded files.
@@ -31,24 +31,24 @@ type FileStore interface {
 	StoreFileUpload(ctx context.Context, FileUpload *models.FileUpload) (*models.FileUpload, error)
 }
 
-// FileUploadHandler encapsulates the logic required to register a file upload and store
+// Processor encapsulates the logic required to register a file upload and store
 // it in the file store.
-type FileUploadHandler struct {
+type Processor struct {
 	fs   FileStore
 	freg FileRegistry
 	log  *zap.SugaredLogger
 }
 
-// New instantiates a new FileUploadHandler instance with provided file store and
+// New instantiates a new Processor instance with provided file store and
 // registry.
-func New(fs FileStore, freg FileRegistry) *FileUploadHandler {
+func New(fs FileStore, freg FileRegistry) *Processor {
 	log := util.MustNewLogger()
-	return &FileUploadHandler{fs, freg, log}
+	return &Processor{fs, freg, log}
 }
 
-// HandleFileUpload registers the provided file upload in the file registry and
+// UploadFileUpload registers the provided file upload in the file registry and
 // uploads the file to the file store.
-func (h *FileUploadHandler) HandleFileUpload(
+func (h *Processor) UploadFileUpload(
 	ctx context.Context,
 	fileUpload *models.FileUpload,
 ) (*models.FileUpload, error) {

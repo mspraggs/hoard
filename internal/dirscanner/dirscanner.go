@@ -13,10 +13,10 @@ import (
 
 //go:generate mockgen -destination=./mocks/dirscanner.go -package=mocks -source=$GOFILE
 
-// FileUploadHandler is the interface required to handle file uploads produced
-// by the DirScanner instance.
-type FileUploadHandler interface {
-	HandleFileUpload(
+// Processor is the interface required to handle file uploads produced by the
+// DirScanner instance.
+type Processor interface {
+	UploadFileUpload(
 		ctx context.Context,
 		upload *models.FileUpload,
 	) (*models.FileUpload, error)
@@ -43,20 +43,20 @@ type DirScanner struct {
 	bucket            string
 	encAlg            models.EncryptionAlgorithm
 	numHandlerThreads int
-	uploadHandlers    []FileUploadHandler
+	processors        []Processor
 	uploadQueue       chan *models.FileUpload
 	wg                *sync.WaitGroup
 	log               *zap.SugaredLogger
 }
 
-// Scan traverses the filesystem and runs all registered uploadHandlers on all
+// Scan traverses the filesystem and runs all registered processors on all
 // regular files.
 func (s *DirScanner) Scan(ctx context.Context) error {
 	s.uploadQueue = make(chan *models.FileUpload)
 
 	for i := 0; i < s.numHandlerThreads; i++ {
 		s.wg.Add(1)
-		go s.handleFileUploads(ctx)
+		go s.uploadFileUploads(ctx)
 	}
 
 	err := fs.WalkDir(s.fs, ".", func(path string, d fs.DirEntry, err error) error {
@@ -108,7 +108,7 @@ func (s *DirScanner) Scan(ctx context.Context) error {
 	return err
 }
 
-func (s *DirScanner) handleFileUploads(ctx context.Context) {
+func (s *DirScanner) uploadFileUploads(ctx context.Context) {
 	defer s.wg.Done()
 
 	for {
@@ -117,8 +117,8 @@ func (s *DirScanner) handleFileUploads(ctx context.Context) {
 			if !ok {
 				return
 			}
-			for _, handler := range s.uploadHandlers {
-				_, err := handler.HandleFileUpload(ctx, fu)
+			for _, handler := range s.processors {
+				_, err := handler.UploadFileUpload(ctx, fu)
 				if err != nil {
 					s.log.Warnw("Error handling file upload", "error", err, "file_upload", fu)
 				}

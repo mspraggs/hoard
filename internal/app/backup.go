@@ -16,7 +16,7 @@ import (
 	"github.com/mspraggs/hoard/internal/fileregistry"
 	"github.com/mspraggs/hoard/internal/filestore"
 	"github.com/mspraggs/hoard/internal/filestore/uploader"
-	"github.com/mspraggs/hoard/internal/fileuploadhandler"
+	"github.com/mspraggs/hoard/internal/processor"
 	"github.com/mspraggs/hoard/internal/util"
 )
 
@@ -125,7 +125,7 @@ func processDirectory(
 		dir.StorageClass.ToBusiness(),
 	)
 
-	handler := fileuploadhandler.New(store, registry)
+	handler := processor.New(store, registry)
 
 	scanner := dirscanner.NewBuilder().
 		WithBucket(dir.Bucket).
@@ -133,7 +133,7 @@ func processDirectory(
 		WithNumHandlerThreads(config.NumThreads).
 		WithEncryptionAlgorithm(dir.EncryptionAlgorithm.ToBusiness()).
 		WithVersionCalculator(util.NewVersionCalculator(fs)).
-		AddFileUploadHandler(handler).
+		AddProcessor(handler).
 		Build()
 
 	return scanner.Scan(context.Background())

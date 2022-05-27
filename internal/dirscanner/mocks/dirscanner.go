@@ -12,42 +12,42 @@ import (
 	models "github.com/mspraggs/hoard/internal/models"
 )
 
-// MockFileUploadHandler is a mock of FileUploadHandler interface.
-type MockFileUploadHandler struct {
+// MockProcessor is a mock of Processor interface.
+type MockProcessor struct {
 	ctrl     *gomock.Controller
-	recorder *MockFileUploadHandlerMockRecorder
+	recorder *MockProcessorMockRecorder
 }
 
-// MockFileUploadHandlerMockRecorder is the mock recorder for MockFileUploadHandler.
-type MockFileUploadHandlerMockRecorder struct {
-	mock *MockFileUploadHandler
+// MockProcessorMockRecorder is the mock recorder for MockProcessor.
+type MockProcessorMockRecorder struct {
+	mock *MockProcessor
 }
 
-// NewMockFileUploadHandler creates a new mock instance.
-func NewMockFileUploadHandler(ctrl *gomock.Controller) *MockFileUploadHandler {
-	mock := &MockFileUploadHandler{ctrl: ctrl}
-	mock.recorder = &MockFileUploadHandlerMockRecorder{mock}
+// NewMockProcessor creates a new mock instance.
+func NewMockProcessor(ctrl *gomock.Controller) *MockProcessor {
+	mock := &MockProcessor{ctrl: ctrl}
+	mock.recorder = &MockProcessorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockFileUploadHandler) EXPECT() *MockFileUploadHandlerMockRecorder {
+func (m *MockProcessor) EXPECT() *MockProcessorMockRecorder {
 	return m.recorder
 }
 
-// HandleFileUpload mocks base method.
-func (m *MockFileUploadHandler) HandleFileUpload(ctx context.Context, upload *models.FileUpload) (*models.FileUpload, error) {
+// UploadFileUpload mocks base method.
+func (m *MockProcessor) UploadFileUpload(ctx context.Context, upload *models.FileUpload) (*models.FileUpload, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HandleFileUpload", ctx, upload)
+	ret := m.ctrl.Call(m, "UploadFileUpload", ctx, upload)
 	ret0, _ := ret[0].(*models.FileUpload)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// HandleFileUpload indicates an expected call of HandleFileUpload.
-func (mr *MockFileUploadHandlerMockRecorder) HandleFileUpload(ctx, upload interface{}) *gomock.Call {
+// UploadFileUpload indicates an expected call of UploadFileUpload.
+func (mr *MockProcessorMockRecorder) UploadFileUpload(ctx, upload interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleFileUpload", reflect.TypeOf((*MockFileUploadHandler)(nil).HandleFileUpload), ctx, upload)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadFileUpload", reflect.TypeOf((*MockProcessor)(nil).UploadFileUpload), ctx, upload)
 }
 
 // MockVersionCalculator is a mock of VersionCalculator interface.

@@ -22,7 +22,7 @@ var errPathNotFound = errors.New("path not found")
 type DirScannerTestSuite struct {
 	suite.Suite
 	controller            *gomock.Controller
-	mockFileUploadHandler *mocks.MockFileUploadHandler
+	mockProcessor         *mocks.MockProcessor
 	mockVersionCalculator *mocks.MockVersionCalculator
 	mockSalter            *mocks.MockSalter
 }
@@ -33,7 +33,7 @@ func TestDirScannerTestSuite(t *testing.T) {
 
 func (s *DirScannerTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
-	s.mockFileUploadHandler = mocks.NewMockFileUploadHandler(s.controller)
+	s.mockProcessor = mocks.NewMockProcessor(s.controller)
 	s.mockVersionCalculator = mocks.NewMockVersionCalculator(s.controller)
 	s.mockSalter = mocks.NewMockSalter(s.controller)
 }
@@ -70,7 +70,7 @@ func (s *DirScannerTestSuite) TestScan() {
 			WithBucket(bucket).
 			WithNumHandlerThreads(numThreads).
 			WithEncryptionAlgorithm(encryptionAlgorithm).
-			AddFileUploadHandler(s.mockFileUploadHandler).
+			AddProcessor(s.mockProcessor).
 			Build()
 
 		dirScanner.Scan(ctx)
@@ -89,7 +89,7 @@ func (s *DirScannerTestSuite) TestScan() {
 			WithBucket(bucket).
 			WithNumHandlerThreads(numThreads).
 			WithEncryptionAlgorithm(encryptionAlgorithm).
-			AddFileUploadHandler(s.mockFileUploadHandler).
+			AddProcessor(s.mockProcessor).
 			Build()
 
 		err := dirScanner.Scan(ctx)
@@ -113,7 +113,7 @@ func (s *DirScannerTestSuite) TestScan() {
 				WithFS(&fakeBadFS{expectedErr}).
 				WithVersionCalculator(nil).
 				WithSalter(nil).
-				AddFileUploadHandler(nil).
+				AddProcessor(nil).
 				Build()
 
 			dirScanner.Scan(ctx)
@@ -125,7 +125,7 @@ func (s *DirScannerTestSuite) TestScan() {
 				WithFS(fs).
 				WithVersionCalculator(versionCalculatorError).
 				WithSalter(nil).
-				AddFileUploadHandler(nil).
+				AddProcessor(nil).
 				Build()
 
 			dirScanner.Scan(ctx)
@@ -137,7 +137,7 @@ func (s *DirScannerTestSuite) TestScan() {
 				WithFS(fs).
 				WithVersionCalculator(versionCalculatorNoError).
 				WithSalter(salterError).
-				AddFileUploadHandler(nil).
+				AddProcessor(nil).
 				Build()
 
 			dirScanner.Scan(ctx)
@@ -145,8 +145,8 @@ func (s *DirScannerTestSuite) TestScan() {
 		s.Run("from handler", func() {
 			ctx := context.Background()
 
-			s.mockFileUploadHandler.EXPECT().
-				HandleFileUpload(ctx, uploads[0]).Return(nil, expectedErr)
+			s.mockProcessor.EXPECT().
+				UploadFileUpload(ctx, uploads[0]).Return(nil, expectedErr)
 
 			dirScanner := dirscanner.NewBuilder().
 				WithFS(fs).
@@ -154,7 +154,7 @@ func (s *DirScannerTestSuite) TestScan() {
 				WithSalter(salterNoError).
 				WithBucket(bucket).
 				WithEncryptionAlgorithm(encryptionAlgorithm).
-				AddFileUploadHandler(s.mockFileUploadHandler).
+				AddProcessor(s.mockProcessor).
 				Build()
 
 			dirScanner.Scan(ctx)
@@ -183,8 +183,8 @@ func (s *DirScannerTestSuite) newHandlerCallsFromUploads(
 	calls := make([]*gomock.Call, len(uploads))
 
 	for i, upload := range uploads {
-		calls[i] = s.mockFileUploadHandler.EXPECT().
-			HandleFileUpload(ctx, upload).Return(upload, nil)
+		calls[i] = s.mockProcessor.EXPECT().
+			UploadFileUpload(ctx, upload).Return(upload, nil)
 	}
 
 	return calls
