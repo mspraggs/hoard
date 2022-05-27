@@ -1,4 +1,4 @@
-package fileregistry
+package registry
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/mspraggs/hoard/internal/models"
 )
 
-//go:generate mockgen -destination=./mocks/fileregistry.go -package=mocks -source=$GOFILE
+//go:generate mockgen -destination=./mocks/registry.go -package=mocks -source=$GOFILE
 
 // Clock defines the interface required to fetch the current time.
 type Clock interface {
@@ -52,26 +52,26 @@ type RequestIDMaker interface {
 	MakeRequestID(fileUpload *models.FileUpload) (string, error)
 }
 
-// FileRegistry encapsulates the logic required to interact with a register of
+// Registry encapsulates the logic required to interact with a register of
 // file uploads. The registry maintains a record of details associated with a
 // file upload, including a file version string and the timestamp at which the
 // file was uploaded.
-type FileRegistry struct {
+type Registry struct {
 	clock          Clock
 	inTxner        InTransactioner
 	requestIDMaker RequestIDMaker
 }
 
-// New instantiates a new FileRegistry using the provided Clock, InTransactioner
+// New instantiates a new Registry using the provided Clock, InTransactioner
 // and RequestIDMaker instances.
-func New(clock Clock, inTxner InTransactioner, requestIDMaker RequestIDMaker) *FileRegistry {
-	return &FileRegistry{clock, inTxner, requestIDMaker}
+func New(clock Clock, inTxner InTransactioner, requestIDMaker RequestIDMaker) *Registry {
+	return &Registry{clock, inTxner, requestIDMaker}
 }
 
 // RegisterFileUpload creates the file upload in the registry storage backend
 // using an idempotency key derived from the local file path and the file
 // version string.
-func (r *FileRegistry) RegisterFileUpload(
+func (r *Registry) RegisterFileUpload(
 	ctx context.Context,
 	fileUpload *models.FileUpload,
 ) (*models.FileUpload, error) {
@@ -112,7 +112,7 @@ func (r *FileRegistry) RegisterFileUpload(
 
 // GetUploadedFileUpload fetches an existing file upload from the database using
 // the provided ID.
-func (r *FileRegistry) GetUploadedFileUpload(
+func (r *Registry) GetUploadedFileUpload(
 	ctx context.Context,
 	ID string,
 ) (*models.FileUpload, error) {
@@ -150,7 +150,7 @@ func (r *FileRegistry) GetUploadedFileUpload(
 
 // MakeFileUploadUploaded marks a file upload as uploaded using the store held
 // by the file registry.
-func (r *FileRegistry) MarkFileUploadUploaded(
+func (r *Registry) MarkFileUploadUploaded(
 	ctx context.Context,
 	fileUpload *models.FileUpload,
 ) (*models.FileUpload, error) {

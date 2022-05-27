@@ -13,10 +13,10 @@ import (
 	"github.com/mspraggs/hoard/internal/config"
 	"github.com/mspraggs/hoard/internal/db"
 	"github.com/mspraggs/hoard/internal/dirscanner"
-	"github.com/mspraggs/hoard/internal/fileregistry"
 	"github.com/mspraggs/hoard/internal/filestore"
 	"github.com/mspraggs/hoard/internal/filestore/uploader"
 	"github.com/mspraggs/hoard/internal/processor"
+	"github.com/mspraggs/hoard/internal/registry"
 	"github.com/mspraggs/hoard/internal/util"
 )
 
@@ -113,7 +113,7 @@ func processDirectory(
 
 	fs := os.DirFS(dir.Path)
 
-	registry := fileregistry.New(
+	registry := registry.New(
 		&util.Clock{}, &inTransactioner{inTxner},
 		util.NewRequestIDMaker(),
 	)

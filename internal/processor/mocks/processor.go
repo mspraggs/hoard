@@ -12,31 +12,31 @@ import (
 	models "github.com/mspraggs/hoard/internal/models"
 )
 
-// MockFileRegistry is a mock of FileRegistry interface.
-type MockFileRegistry struct {
+// MockRegistry is a mock of Registry interface.
+type MockRegistry struct {
 	ctrl     *gomock.Controller
-	recorder *MockFileRegistryMockRecorder
+	recorder *MockRegistryMockRecorder
 }
 
-// MockFileRegistryMockRecorder is the mock recorder for MockFileRegistry.
-type MockFileRegistryMockRecorder struct {
-	mock *MockFileRegistry
+// MockRegistryMockRecorder is the mock recorder for MockRegistry.
+type MockRegistryMockRecorder struct {
+	mock *MockRegistry
 }
 
-// NewMockFileRegistry creates a new mock instance.
-func NewMockFileRegistry(ctrl *gomock.Controller) *MockFileRegistry {
-	mock := &MockFileRegistry{ctrl: ctrl}
-	mock.recorder = &MockFileRegistryMockRecorder{mock}
+// NewMockRegistry creates a new mock instance.
+func NewMockRegistry(ctrl *gomock.Controller) *MockRegistry {
+	mock := &MockRegistry{ctrl: ctrl}
+	mock.recorder = &MockRegistryMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockFileRegistry) EXPECT() *MockFileRegistryMockRecorder {
+func (m *MockRegistry) EXPECT() *MockRegistryMockRecorder {
 	return m.recorder
 }
 
 // GetUploadedFileUpload mocks base method.
-func (m *MockFileRegistry) GetUploadedFileUpload(ctx context.Context, ID string) (*models.FileUpload, error) {
+func (m *MockRegistry) GetUploadedFileUpload(ctx context.Context, ID string) (*models.FileUpload, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUploadedFileUpload", ctx, ID)
 	ret0, _ := ret[0].(*models.FileUpload)
@@ -45,13 +45,13 @@ func (m *MockFileRegistry) GetUploadedFileUpload(ctx context.Context, ID string)
 }
 
 // GetUploadedFileUpload indicates an expected call of GetUploadedFileUpload.
-func (mr *MockFileRegistryMockRecorder) GetUploadedFileUpload(ctx, ID interface{}) *gomock.Call {
+func (mr *MockRegistryMockRecorder) GetUploadedFileUpload(ctx, ID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUploadedFileUpload", reflect.TypeOf((*MockFileRegistry)(nil).GetUploadedFileUpload), ctx, ID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUploadedFileUpload", reflect.TypeOf((*MockRegistry)(nil).GetUploadedFileUpload), ctx, ID)
 }
 
 // MarkFileUploadUploaded mocks base method.
-func (m *MockFileRegistry) MarkFileUploadUploaded(ctx context.Context, fileUpload *models.FileUpload) (*models.FileUpload, error) {
+func (m *MockRegistry) MarkFileUploadUploaded(ctx context.Context, fileUpload *models.FileUpload) (*models.FileUpload, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarkFileUploadUploaded", ctx, fileUpload)
 	ret0, _ := ret[0].(*models.FileUpload)
@@ -60,13 +60,13 @@ func (m *MockFileRegistry) MarkFileUploadUploaded(ctx context.Context, fileUploa
 }
 
 // MarkFileUploadUploaded indicates an expected call of MarkFileUploadUploaded.
-func (mr *MockFileRegistryMockRecorder) MarkFileUploadUploaded(ctx, fileUpload interface{}) *gomock.Call {
+func (mr *MockRegistryMockRecorder) MarkFileUploadUploaded(ctx, fileUpload interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkFileUploadUploaded", reflect.TypeOf((*MockFileRegistry)(nil).MarkFileUploadUploaded), ctx, fileUpload)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkFileUploadUploaded", reflect.TypeOf((*MockRegistry)(nil).MarkFileUploadUploaded), ctx, fileUpload)
 }
 
 // RegisterFileUpload mocks base method.
-func (m *MockFileRegistry) RegisterFileUpload(ctx context.Context, fileUpload *models.FileUpload) (*models.FileUpload, error) {
+func (m *MockRegistry) RegisterFileUpload(ctx context.Context, fileUpload *models.FileUpload) (*models.FileUpload, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterFileUpload", ctx, fileUpload)
 	ret0, _ := ret[0].(*models.FileUpload)
@@ -75,9 +75,9 @@ func (m *MockFileRegistry) RegisterFileUpload(ctx context.Context, fileUpload *m
 }
 
 // RegisterFileUpload indicates an expected call of RegisterFileUpload.
-func (mr *MockFileRegistryMockRecorder) RegisterFileUpload(ctx, fileUpload interface{}) *gomock.Call {
+func (mr *MockRegistryMockRecorder) RegisterFileUpload(ctx, fileUpload interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterFileUpload", reflect.TypeOf((*MockFileRegistry)(nil).RegisterFileUpload), ctx, fileUpload)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterFileUpload", reflect.TypeOf((*MockRegistry)(nil).RegisterFileUpload), ctx, fileUpload)
 }
 
 // MockFileStore is a mock of FileStore interface.

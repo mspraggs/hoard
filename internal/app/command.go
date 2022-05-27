@@ -13,7 +13,7 @@ import (
 
 	"github.com/mspraggs/hoard/internal/config"
 	"github.com/mspraggs/hoard/internal/db"
-	"github.com/mspraggs/hoard/internal/fileregistry"
+	"github.com/mspraggs/hoard/internal/registry"
 	"github.com/mspraggs/hoard/internal/util"
 )
 
@@ -70,17 +70,17 @@ type inTransactioner struct {
 	inTxner *db.InTransactioner
 }
 
-// InTransaction implements the fileregistry InTransactioner interface,
+// InTransaction implements the registry InTransactioner interface,
 // providing a shim between the interface in that package and the type in the db
 // package.
 func (t *inTransactioner) InTransaction(
 	ctx context.Context,
-	fn fileregistry.TxnFunc,
+	fn registry.TxnFunc,
 ) (interface{}, error) {
 	return t.inTxner.InTransaction(
 		ctx,
 		func(ctx context.Context, s *db.Store) (interface{}, error) {
-			return fn(ctx, fileregistry.Store(s))
+			return fn(ctx, registry.Store(s))
 		},
 	)
 }

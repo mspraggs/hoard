@@ -12,9 +12,9 @@ import (
 
 //go:generate mockgen -destination=./mocks/processor.go -package=mocks -source=$GOFILE
 
-// FileRegistry specifies the interface required to register and update the
+// Registry specifies the interface required to register and update the
 // registry of uploaded files.
-type FileRegistry interface {
+type Registry interface {
 	RegisterFileUpload(
 		ctx context.Context,
 		fileUpload *models.FileUpload,
@@ -35,13 +35,13 @@ type FileStore interface {
 // it in the file store.
 type Processor struct {
 	fs   FileStore
-	freg FileRegistry
+	freg Registry
 	log  *zap.SugaredLogger
 }
 
 // New instantiates a new Processor instance with provided file store and
 // registry.
-func New(fs FileStore, freg FileRegistry) *Processor {
+func New(fs FileStore, freg Registry) *Processor {
 	log := util.MustNewLogger()
 	return &Processor{fs, freg, log}
 }
