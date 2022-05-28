@@ -11,10 +11,6 @@ import (
 
 //go:generate mockgen -destination=./mocks/store.go -package=mocks -source=$GOFILE
 
-type BucketSelector interface {
-	SelectBucket(fileUpload *models.FileUpload) string
-}
-
 // EncryptionKeyGenerator defines the interface required to generate an
 // encryption key for the provided file upload.
 type EncryptionKeyGenerator interface {

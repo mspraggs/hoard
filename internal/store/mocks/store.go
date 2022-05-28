@@ -13,43 +13,6 @@ import (
 	models0 "github.com/mspraggs/hoard/internal/store/models"
 )
 
-// MockBucketSelector is a mock of BucketSelector interface.
-type MockBucketSelector struct {
-	ctrl     *gomock.Controller
-	recorder *MockBucketSelectorMockRecorder
-}
-
-// MockBucketSelectorMockRecorder is the mock recorder for MockBucketSelector.
-type MockBucketSelectorMockRecorder struct {
-	mock *MockBucketSelector
-}
-
-// NewMockBucketSelector creates a new mock instance.
-func NewMockBucketSelector(ctrl *gomock.Controller) *MockBucketSelector {
-	mock := &MockBucketSelector{ctrl: ctrl}
-	mock.recorder = &MockBucketSelectorMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockBucketSelector) EXPECT() *MockBucketSelectorMockRecorder {
-	return m.recorder
-}
-
-// SelectBucket mocks base method.
-func (m *MockBucketSelector) SelectBucket(fileUpload *models.FileUpload) string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectBucket", fileUpload)
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// SelectBucket indicates an expected call of SelectBucket.
-func (mr *MockBucketSelectorMockRecorder) SelectBucket(fileUpload interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectBucket", reflect.TypeOf((*MockBucketSelector)(nil).SelectBucket), fileUpload)
-}
-
 // MockEncryptionKeyGenerator is a mock of EncryptionKeyGenerator interface.
 type MockEncryptionKeyGenerator struct {
 	ctrl     *gomock.Controller
