@@ -1,4 +1,4 @@
-package uploader_test
+package store_test
 
 import (
 	"bytes"
@@ -14,9 +14,9 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/suite"
 
-	fsmodels "github.com/mspraggs/hoard/internal/store/models"
-	"github.com/mspraggs/hoard/internal/store/uploader"
-	"github.com/mspraggs/hoard/internal/store/uploader/mocks"
+	"github.com/mspraggs/hoard/internal/store"
+	"github.com/mspraggs/hoard/internal/store/mocks"
+	"github.com/mspraggs/hoard/internal/store/models"
 )
 
 type SingleUploaderTestSuite struct {
@@ -38,7 +38,7 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 	body := []byte{0, 1, 2, 3}
 
 	s.Run("reads and uploads file with checksum", func() {
-		upload := &fsmodels.FileUpload{
+		upload := &models.FileUpload{
 			Key:  "foo",
 			Body: bytes.NewReader(body),
 		}
@@ -48,7 +48,7 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 			PutObject(context.Background(), newPutObjectInputMatcher(putObjectInput)).
 			Return(nil, nil)
 
-		uploader := uploader.NewSingleUploader(s.mockClient)
+		uploader := store.NewSingleUploader(s.mockClient)
 
 		err := uploader.Upload(context.Background(), upload)
 
@@ -58,7 +58,7 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 	s.Run("wraps and returns error", func() {
 		s.Run("from put object", func() {
 			expectedErr := errors.New("fail")
-			upload := &fsmodels.FileUpload{
+			upload := &models.FileUpload{
 				Key:  "foo",
 				Body: bytes.NewReader(body),
 			}
@@ -68,7 +68,7 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 				PutObject(context.Background(), newPutObjectInputMatcher(putObjectInput)).
 				Return(nil, expectedErr)
 
-			uploader := uploader.NewSingleUploader(s.mockClient)
+			uploader := store.NewSingleUploader(s.mockClient)
 
 			err := uploader.Upload(context.Background(), upload)
 
@@ -77,7 +77,7 @@ func (s *SingleUploaderTestSuite) TestUpload() {
 	})
 }
 
-func newTestPutObjectInput(upload *fsmodels.FileUpload, body []byte) *s3.PutObjectInput {
+func newTestPutObjectInput(upload *models.FileUpload, body []byte) *s3.PutObjectInput {
 	empty := ""
 	emptyMD5 := "1B2M2Y8AsgTpgAmY7PhCfg=="
 	return &s3.PutObjectInput{

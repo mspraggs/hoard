@@ -16,7 +16,6 @@ import (
 	"github.com/mspraggs/hoard/internal/processor"
 	"github.com/mspraggs/hoard/internal/registry"
 	"github.com/mspraggs/hoard/internal/store"
-	"github.com/mspraggs/hoard/internal/store/uploader"
 	"github.com/mspraggs/hoard/internal/util"
 )
 
@@ -147,8 +146,8 @@ func makeUploaderConstructor(client *s3.Client, chunksize int64) store.UploaderC
 		}
 		size := info.Size()
 		if size >= chunksize {
-			return uploader.NewMultiUploader(size, chunksize, client), nil
+			return store.NewMultiUploader(size, chunksize, client), nil
 		}
-		return uploader.NewSingleUploader(client), nil
+		return store.NewSingleUploader(client), nil
 	}
 }

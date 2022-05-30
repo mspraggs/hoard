@@ -1,4 +1,4 @@
-package uploader_test
+package store_test
 
 import (
 	"bytes"
@@ -15,9 +15,9 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/suite"
 
-	fsmodels "github.com/mspraggs/hoard/internal/store/models"
-	"github.com/mspraggs/hoard/internal/store/uploader"
-	"github.com/mspraggs/hoard/internal/store/uploader/mocks"
+	"github.com/mspraggs/hoard/internal/store"
+	"github.com/mspraggs/hoard/internal/store/mocks"
+	"github.com/mspraggs/hoard/internal/store/models"
 )
 
 type MultiUploaderTestSuite struct {
@@ -79,7 +79,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 	}
 
 	s.Run("reads and uploads file", func() {
-		upload := &fsmodels.FileUpload{
+		upload := &models.FileUpload{
 			Key:  key,
 			Body: bytes.NewReader(body),
 		}
@@ -103,7 +103,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 			CompleteMultipartUpload(context.Background(), completeUploadInput).
 			Return(nil, nil)
 
-		uploader := uploader.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
+		uploader := store.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
 
 		err := uploader.Upload(context.Background(), upload)
 
@@ -111,9 +111,9 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 	})
 
 	s.Run("returns error for zero chunk size", func() {
-		upload := &fsmodels.FileUpload{Key: key}
+		upload := &models.FileUpload{Key: key}
 
-		uploader := uploader.NewMultiUploader(bodySize, 0, nil)
+		uploader := store.NewMultiUploader(bodySize, 0, nil)
 
 		err := uploader.Upload(context.Background(), upload)
 
@@ -123,13 +123,13 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 	s.Run("wraps and returns error", func() {
 		s.Run("from create multipart upload", func() {
 			expectedErr := errors.New("oh no")
-			upload := &fsmodels.FileUpload{Key: key}
+			upload := &models.FileUpload{Key: key}
 
 			s.mockClient.EXPECT().
 				CreateMultipartUpload(context.Background(), createMultipartUploadInput).
 				Return(nil, expectedErr)
 
-			uploader := uploader.NewMultiUploader(bodySize, 1, s.mockClient)
+			uploader := store.NewMultiUploader(bodySize, 1, s.mockClient)
 
 			err := uploader.Upload(context.Background(), upload)
 
@@ -137,7 +137,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 		})
 		s.Run("from upload part", func() {
 			expectedErr := errors.New("oh no")
-			upload := &fsmodels.FileUpload{Key: key}
+			upload := &models.FileUpload{Key: key}
 
 			uploadPartInput := newTestUploadPartInput(
 				upload, uploadID, 1, int64(maxChunkSize),
@@ -150,7 +150,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 				UploadPart(context.Background(), newUploadPartInputMatcher(uploadPartInput)).
 				Return(nil, expectedErr)
 
-			uploader := uploader.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
+			uploader := store.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
 
 			err := uploader.Upload(context.Background(), upload)
 
@@ -158,7 +158,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 		})
 		s.Run("from complete multipart upload", func() {
 			expectedErr := errors.New("oh no")
-			upload := &fsmodels.FileUpload{
+			upload := &models.FileUpload{
 				Key:  key,
 				Body: bytes.NewReader(body),
 			}
@@ -182,7 +182,7 @@ func (s *MultiUploaderTestSuite) TestUpload() {
 				CompleteMultipartUpload(context.Background(), completeUploadInput).
 				Return(nil, expectedErr)
 
-			uploader := uploader.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
+			uploader := store.NewMultiUploader(bodySize, int64(maxChunkSize), s.mockClient)
 
 			err := uploader.Upload(context.Background(), upload)
 
@@ -217,7 +217,7 @@ func (s *MultiUploaderTestSuite) makeDoUploadPart(
 }
 
 func newTestUploadPartInput(
-	upload *fsmodels.FileUpload,
+	upload *models.FileUpload,
 	uploadID string,
 	chunkNum int32,
 	chunkSize int64,
