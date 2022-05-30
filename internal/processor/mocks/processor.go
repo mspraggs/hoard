@@ -50,6 +50,20 @@ func (mr *MockRegistryMockRecorder) GetUploadedFileUpload(ctx, ID interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUploadedFileUpload", reflect.TypeOf((*MockRegistry)(nil).GetUploadedFileUpload), ctx, ID)
 }
 
+// MarkFileUploadDeleted mocks base method.
+func (m *MockRegistry) MarkFileUploadDeleted(ctx context.Context, fileUpload *models.FileUpload) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkFileUploadDeleted", ctx, fileUpload)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkFileUploadDeleted indicates an expected call of MarkFileUploadDeleted.
+func (mr *MockRegistryMockRecorder) MarkFileUploadDeleted(ctx, fileUpload interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkFileUploadDeleted", reflect.TypeOf((*MockRegistry)(nil).MarkFileUploadDeleted), ctx, fileUpload)
+}
+
 // MarkFileUploadUploaded mocks base method.
 func (m *MockRegistry) MarkFileUploadUploaded(ctx context.Context, fileUpload *models.FileUpload) (*models.FileUpload, error) {
 	m.ctrl.T.Helper()
@@ -101,6 +115,20 @@ func NewMockStore(ctrl *gomock.Controller) *MockStore {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
+}
+
+// EraseFileUpload mocks base method.
+func (m *MockStore) EraseFileUpload(ctx context.Context, FileUpload *models.FileUpload) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EraseFileUpload", ctx, FileUpload)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EraseFileUpload indicates an expected call of EraseFileUpload.
+func (mr *MockStoreMockRecorder) EraseFileUpload(ctx, FileUpload interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EraseFileUpload", reflect.TypeOf((*MockStore)(nil).EraseFileUpload), ctx, FileUpload)
 }
 
 // StoreFileUpload mocks base method.
