@@ -1,13 +1,21 @@
 package store_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/psanford/memfs"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/mspraggs/hoard/internal/models"
@@ -16,36 +24,11 @@ import (
 	fsmodels "github.com/mspraggs/hoard/internal/store/models"
 )
 
-var errFileNotFound = errors.New("file not found")
-
 type FilestoreTestSuite struct {
 	suite.Suite
 	controller    *gomock.Controller
 	mockEncKeyGen *mocks.MockEncryptionKeyGenerator
-}
-
-type fakeFS map[string]*fakeFile
-
-func (fs fakeFS) Open(path string) (fs.File, error) {
-	if f, ok := fs[path]; ok {
-		return f, nil
-	}
-	return nil, errFileNotFound
-}
-
-type fakeFile struct {
-}
-
-func (f *fakeFile) Read(bs []byte) (int, error) {
-	return 0, nil
-}
-
-func (f *fakeFile) Close() error {
-	return nil
-}
-
-func (f *fakeFile) Stat() (fs.FileInfo, error) {
-	return nil, nil
+	mockClient    *mocks.MockClient
 }
 
 func TestStoreTestSuite(t *testing.T) {
@@ -55,16 +38,18 @@ func TestStoreTestSuite(t *testing.T) {
 func (s *FilestoreTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
 	s.mockEncKeyGen = mocks.NewMockEncryptionKeyGenerator(s.controller)
+	s.mockClient = mocks.NewMockClient(s.controller)
 }
 
 func (s *FilestoreTestSuite) TestStoreFileUpload() {
 	s.Run("uploads file with key and returns upload", func() {
 		fileID := "some-file"
-		path := "/path/to/file"
-		encKey := models.EncryptionKey([]byte{1, 2, 3})
+		path := "path/to/file"
+		body := []byte{1, 2, 3}
+		encKey := models.EncryptionKey(body)
 
-		fakeFile := &fakeFile{}
-		fakeFileSystem := fakeFS{path: fakeFile}
+		fs, err := newMemFS(map[string][]byte{path: body})
+		s.Require().NoError(err)
 
 		businessFileUpload := &models.FileUpload{
 			ID:        fileID,
@@ -72,27 +57,22 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 		}
 		fsFileUpload := &fsmodels.FileUpload{
 			Key:                 fileID,
-			EncryptionKey:       fsmodels.EncryptionKey([]byte{1, 2, 3}),
+			EncryptionKey:       fsmodels.EncryptionKey(body),
 			EncryptionAlgorithm: types.ServerSideEncryptionAes256,
 			ChecksumAlgorithm:   types.ChecksumAlgorithmSha256,
 			StorageClass:        types.StorageClassStandard,
-			Body:                fakeFile,
+			Size:                3,
+			Body:                bytes.NewReader(body),
 		}
 
 		s.mockEncKeyGen.EXPECT().
 			GenerateKey(businessFileUpload).Return(encKey, nil)
 
-		mockUploader := mocks.NewMockUploader(s.controller)
-		mockUploader.EXPECT().
-			Upload(context.Background(), fsFileUpload).
+		s.mockClient.EXPECT().
+			Upload(context.Background(), newFileUploadMatcher(fsFileUpload)).
 			Return(nil)
 
-		fakeUploaderConstructor := func(f fs.File) (store.Uploader, error) {
-			s.Require().Equal(fakeFile, f)
-			return mockUploader, nil
-		}
-
-		store := s.newStore(fakeFileSystem, fakeUploaderConstructor)
+		store := s.newStore(fs)
 
 		uploadedFileUpload, err := store.StoreFileUpload(context.Background(), businessFileUpload)
 
@@ -101,17 +81,20 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 	})
 
 	s.Run("wraps and returns error", func() {
-		s.Run("from filesystem", func() {
-			expectedErr := errFileNotFound
+		s.Run("from filesystem Open", func() {
+			expectedErr := fs.ErrNotExist
 			fileID := "some-file"
-			path := "/path/to/file"
+			path := "path/to/file"
+
+			fs, err := newMemFS(map[string][]byte{})
+			s.Require().NoError(err)
 
 			businessFileUpload := &models.FileUpload{
 				ID:        fileID,
 				LocalPath: path,
 			}
 
-			store := s.newStore(&fakeFS{}, nil)
+			store := s.newStore(fs)
 
 			uploadedFileUpload, err := store.StoreFileUpload(
 				context.Background(),
@@ -124,7 +107,7 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 		s.Run("from encryption key generator", func() {
 			expectedErr := errors.New("oh no")
 			fileID := "some-file"
-			path := "/path/to/file"
+			path := "path/to/file"
 			encKey := models.EncryptionKey([]byte{})
 
 			businessFileUpload := &models.FileUpload{
@@ -132,12 +115,12 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 				LocalPath: path,
 			}
 
-			fakeFile := &fakeFile{}
-			fakeFileSystem := fakeFS{path: fakeFile}
+			fs, err := newMemFS(map[string][]byte{path: {}})
+			s.Require().NoError(err)
 
 			s.mockEncKeyGen.EXPECT().GenerateKey(businessFileUpload).Return(encKey, expectedErr)
 
-			store := s.newStore(fakeFileSystem, nil)
+			store := s.newStore(fs)
 
 			uploadedFileUpload, err := store.StoreFileUpload(
 				context.Background(),
@@ -147,46 +130,15 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			s.Require().Nil(uploadedFileUpload)
 			s.Require().ErrorIs(err, expectedErr)
 		})
-		s.Run("from upload selector", func() {
+		s.Run("from client", func() {
 			expectedErr := errors.New("oh no")
 			fileID := "some-file"
-			path := "/path/to/file"
-			encKey := models.EncryptionKey([]byte{})
+			path := "path/to/file"
+			body := []byte{1, 2, 3}
+			encKey := models.EncryptionKey(body)
 
-			businessFileUpload := &models.FileUpload{
-				ID:        fileID,
-				LocalPath: path,
-			}
-
-			fakeFile := &fakeFile{}
-			fakeFileSystem := fakeFS{path: fakeFile}
-
-			s.mockEncKeyGen.EXPECT().
-				GenerateKey(businessFileUpload).Return(encKey, nil)
-
-			fakeUploaderConstructor := func(f fs.File) (store.Uploader, error) {
-				s.Require().Equal(fakeFile, f)
-				return nil, expectedErr
-			}
-
-			store := s.newStore(fakeFileSystem, fakeUploaderConstructor)
-
-			uploadedFileUpload, err := store.StoreFileUpload(
-				context.Background(),
-				businessFileUpload,
-			)
-
-			s.Require().Nil(uploadedFileUpload)
-			s.Require().ErrorIs(err, expectedErr)
-		})
-		s.Run("from uploader", func() {
-			expectedErr := errors.New("oh no")
-			fileID := "some-file"
-			path := "/path/to/file"
-			encKey := models.EncryptionKey([]byte{1, 2, 3})
-
-			fakeFile := &fakeFile{}
-			fakeFileSystem := fakeFS{path: fakeFile}
+			fs, err := newMemFS(map[string][]byte{path: body})
+			s.Require().NoError(err)
 
 			businessFileUpload := &models.FileUpload{
 				ID:        fileID,
@@ -194,27 +146,22 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 			}
 			fsFileUpload := &fsmodels.FileUpload{
 				Key:                 fileID,
-				EncryptionKey:       fsmodels.EncryptionKey([]byte{1, 2, 3}),
+				EncryptionKey:       fsmodels.EncryptionKey(body),
 				EncryptionAlgorithm: types.ServerSideEncryptionAes256,
 				ChecksumAlgorithm:   types.ChecksumAlgorithmSha256,
 				StorageClass:        types.StorageClassStandard,
-				Body:                fakeFile,
+				Size:                int64(len(body)),
+				Body:                bytes.NewReader(body),
 			}
 
 			s.mockEncKeyGen.EXPECT().
 				GenerateKey(businessFileUpload).Return(encKey, nil)
 
-			mockUploader := mocks.NewMockUploader(s.controller)
-			mockUploader.EXPECT().
-				Upload(context.Background(), fsFileUpload).
+			s.mockClient.EXPECT().
+				Upload(context.Background(), newFileUploadMatcher(fsFileUpload)).
 				Return(expectedErr)
 
-			fakeUploaderConstructor := func(f fs.File) (store.Uploader, error) {
-				s.Require().Equal(fakeFile, f)
-				return mockUploader, nil
-			}
-
-			store := s.newStore(fakeFileSystem, fakeUploaderConstructor)
+			store := s.newStore(fs)
 
 			uploadedFileUpload, err := store.StoreFileUpload(
 				context.Background(),
@@ -227,13 +174,66 @@ func (s *FilestoreTestSuite) TestStoreFileUpload() {
 	})
 }
 
-func (s *FilestoreTestSuite) newStore(
-	fs fs.FS,
-	uploaderConstructor store.UploaderConstructor,
-) *store.Store {
+func (s *FilestoreTestSuite) newStore(fs fs.FS) *store.Store {
 
 	return store.New(
-		fs, uploaderConstructor, models.ChecksumAlgorithmSHA256, s.mockEncKeyGen,
+		s.mockClient, fs, models.ChecksumAlgorithmSHA256, s.mockEncKeyGen,
 		models.StorageClassStandard,
 	)
+}
+
+func newMemFS(files map[string][]byte) (*memfs.FS, error) {
+	fs := memfs.New()
+
+	for path, body := range files {
+		err := fs.MkdirAll(filepath.Dir(path), os.FileMode(0))
+		if err != nil {
+			return nil, err
+		}
+		err = fs.WriteFile(path, body, os.FileMode(0))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return fs, nil
+}
+
+type fileUploadMatcher struct {
+	expected *fsmodels.FileUpload
+}
+
+func newFileUploadMatcher(expected *fsmodels.FileUpload) *fileUploadMatcher {
+	return &fileUploadMatcher{expected}
+}
+
+func (m *fileUploadMatcher) Matches(actual interface{}) bool {
+	actualUpload, ok := actual.(*fsmodels.FileUpload)
+	if !ok {
+		return false
+	}
+
+	actualBody, err := io.ReadAll(actualUpload.Body)
+	if err != nil {
+		return false
+	}
+
+	expectedBody, err := io.ReadAll(m.expected.Body)
+	if err != nil {
+		return false
+	}
+
+	if bytes.Compare(expectedBody, actualBody) != 0 {
+		return false
+	}
+
+	return cmp.Equal(
+		m.expected, actualUpload,
+		cmpopts.IgnoreUnexported(fsmodels.FileUpload{}),
+		cmpopts.IgnoreFields(fsmodels.FileUpload{}, "Body"),
+	)
+}
+
+func (m *fileUploadMatcher) String() string {
+	return fmt.Sprintf("is equal to %v", m.expected)
 }

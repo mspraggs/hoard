@@ -31,6 +31,7 @@ type ChecksumAlgorithm = types.ChecksumAlgorithm
 type FileUpload struct {
 	Key                 string
 	Bucket              string
+	Size                int64
 	EncryptionKey       EncryptionKey
 	EncryptionAlgorithm EncryptionAlgorithm
 	ChecksumAlgorithm   ChecksumAlgorithm
@@ -128,6 +129,7 @@ func NewFileUploadFromBusiness(
 	encryptionKey models.EncryptionKey,
 	checksumAlgorithm models.ChecksumAlgorithm,
 	storageClass models.StorageClass,
+	size int64,
 	upload *models.FileUpload,
 	body io.Reader,
 ) *FileUpload {
@@ -135,6 +137,7 @@ func NewFileUploadFromBusiness(
 	return &FileUpload{
 		Key:                 upload.ID,
 		Bucket:              upload.Bucket,
+		Size:                size,
 		EncryptionKey:       NewEncryptionKeyFromBusiness(encryptionKey),
 		EncryptionAlgorithm: NewEncryptionAlgorithmFromBusiness(encryptionAlgorithm),
 		ChecksumAlgorithm:   NewChecksumAlgorithmFromBusiness(checksumAlgorithm),

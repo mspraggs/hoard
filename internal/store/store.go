@@ -17,36 +17,32 @@ type EncryptionKeyGenerator interface {
 	GenerateKey(fileUpload *models.FileUpload) (models.EncryptionKey, error)
 }
 
-// Uploader defines the interface required to upload a file upload.
-type Uploader interface {
+// Client defines the interface required to interact with the storage backend.
+type Client interface {
 	Upload(ctx context.Context, upload *fsmodels.FileUpload) error
 }
-
-// UploaderConstructor defines how an Uploader instance should be constructed
-// from a file object.
-type UploaderConstructor func(file fs.File) (Uploader, error)
 
 // Store encapsulates the logic required to store a file in a storage
 // bucket.
 type Store struct {
-	fs                  fs.FS
-	ekg                 EncryptionKeyGenerator
-	csAlg               models.ChecksumAlgorithm
-	sc                  models.StorageClass
-	uploaderConstructor UploaderConstructor
+	client Client
+	fs     fs.FS
+	ekg    EncryptionKeyGenerator
+	csAlg  models.ChecksumAlgorithm
+	sc     models.StorageClass
 }
 
 // New instantiates a new file store with provided filesystem, uploader
 // selector, checksum algorithm and encryption key generator.
 func New(
+	client Client,
 	fs fs.FS,
-	uploaderConstructor UploaderConstructor,
 	csAlg models.ChecksumAlgorithm,
 	ekg EncryptionKeyGenerator,
 	sc models.StorageClass,
 ) *Store {
 
-	return &Store{fs, ekg, csAlg, sc, uploaderConstructor}
+	return &Store{client, fs, ekg, csAlg, sc}
 }
 
 // StoreFileUpload loads a file, generates an encryption key from that file and
@@ -62,22 +58,30 @@ func (s *Store) StoreFileUpload(
 	}
 	defer file.Close()
 
+	size, err := fileSize(file)
+	if err != nil {
+		return nil, fmt.Errorf("unable to determine file size: %w", err)
+	}
+
 	encKey, err := s.ekg.GenerateKey(fileUpload)
 	if err != nil {
 		return nil, err
 	}
 	upload := fsmodels.NewFileUploadFromBusiness(
-		fileUpload.EncryptionAlgorithm, encKey, s.csAlg, s.sc, fileUpload, file,
+		fileUpload.EncryptionAlgorithm, encKey, s.csAlg, s.sc, size, fileUpload, file,
 	)
 
-	uploader, err := s.uploaderConstructor(file)
-	if err != nil {
-		return nil, fmt.Errorf("unable to select file uploader: %w", err)
-	}
-
-	if err := uploader.Upload(ctx, upload); err != nil {
+	if err := s.client.Upload(ctx, upload); err != nil {
 		return nil, fmt.Errorf("unable to upload file: %w", err)
 	}
 
 	return fileUpload, nil
+}
+
+func fileSize(file fs.File) (int64, error) {
+	info, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
 }
