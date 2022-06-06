@@ -148,22 +148,56 @@ func (r *Registry) GetUploadedFileUpload(
 	return uploadedFileUpload, nil
 }
 
-// MakeFileUploadUploaded marks a file upload as uploaded using the store held
+// MarkFileUploadUploaded marks a file upload as uploaded using the store held
 // by the file registry.
 func (r *Registry) MarkFileUploadUploaded(
 	ctx context.Context,
 	fileUpload *models.FileUpload,
 ) (*models.FileUpload, error) {
 
-	opaqueUpdatedFileUpload, err := r.inTxner.InTransaction(
+	markUploaded := func() *models.FileUpload {
+		fileUpload.UploadedAtTimestamp = r.clock.Now()
+		return fileUpload
+	}
+	return r.updateFileUpload(
+		ctx, fileUpload.ID+"_uploaded", models.ChangeTypeUpdate, markUploaded,
+	)
+}
+
+// MarkFileUploadDeleted marks a file upload as uploaded using the store held
+// by the file registry.
+func (r *Registry) MarkFileUploadDeleted(
+	ctx context.Context,
+	fileUpload *models.FileUpload,
+) error {
+
+	markDeleted := func() *models.FileUpload {
+		fileUpload.DeletedAtTimestamp = r.clock.Now()
+		return fileUpload
+	}
+	if _, err := r.updateFileUpload(
+		ctx, fileUpload.ID+"_deleted", models.ChangeTypeDelete, markDeleted,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Registry) updateFileUpload(
+	ctx context.Context,
+	requestID string,
+	changeType models.ChangeType,
+	getMutatedFileUpload func() *models.FileUpload,
+) (*models.FileUpload, error) {
+
+	result, err := r.inTxner.InTransaction(
 		ctx,
 		func(c context.Context, s Store) (interface{}, error) {
-			fileUpload.UploadedAtTimestamp = r.clock.Now()
-			requestID := fileUpload.ID
-			existingFileUpload, changeType, err := s.GetFileUploadByChangeRequestID(c, requestID)
+			existingFileUpload, existingChangeType, err :=
+				s.GetFileUploadByChangeRequestID(c, requestID)
 
 			if err == nil {
-				if changeType == models.ChangeTypeUpdate {
+				if existingChangeType == changeType {
 					return existingFileUpload, nil
 				}
 				return nil, pkgerrors.ErrInvalidRequestID
@@ -173,6 +207,7 @@ func (r *Registry) MarkFileUploadUploaded(
 				return nil, err
 			}
 
+			fileUpload := getMutatedFileUpload()
 			return s.UpdateFileUpload(c, requestID, fileUpload)
 		},
 	)
@@ -180,5 +215,5 @@ func (r *Registry) MarkFileUploadUploaded(
 		return nil, fmt.Errorf("error while updating file upload in db: %w", err)
 	}
 
-	return opaqueUpdatedFileUpload.(*models.FileUpload), nil
+	return result.(*models.FileUpload), nil
 }

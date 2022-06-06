@@ -11,6 +11,7 @@ type ChangeType int
 const (
 	ChangeTypeCreate ChangeType = 1
 	ChangeTypeUpdate ChangeType = 2
+	ChangeTypeDelete ChangeType = 3
 )
 
 type EncryptionAlgorithm int
@@ -51,6 +52,8 @@ func NewChangeTypeFromBusiness(c models.ChangeType) ChangeType {
 		return ChangeTypeCreate
 	case models.ChangeTypeUpdate:
 		return ChangeTypeUpdate
+	case models.ChangeTypeDelete:
+		return ChangeTypeDelete
 	default:
 		return ChangeType(0)
 	}
@@ -62,6 +65,8 @@ func (c ChangeType) ToBusiness() models.ChangeType {
 		return models.ChangeTypeCreate
 	case ChangeTypeUpdate:
 		return models.ChangeTypeUpdate
+	case ChangeTypeDelete:
+		return models.ChangeTypeDelete
 	default:
 		return models.ChangeType(0)
 	}

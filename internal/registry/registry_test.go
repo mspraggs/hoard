@@ -341,7 +341,7 @@ func (s *RegistryTestSuite) TestMarkFileUploadUploaded() {
 		ID:                  "foo",
 		UploadedAtTimestamp: time.Unix(1, 0),
 	}
-	expectedRequestID := inputFileUpload.ID
+	expectedRequestID := inputFileUpload.ID + "_uploaded"
 
 	s.Run("updates file upload in store", func() {
 		clock := &MockClock{}
@@ -354,7 +354,7 @@ func (s *RegistryTestSuite) TestMarkFileUploadUploaded() {
 			Return(nil, models.ChangeTypeUpdate, pkgerrors.ErrNotFound)
 		s.mockStore.EXPECT().
 			UpdateFileUpload(
-				context.Background(), inputFileUpload.ID, inputFileUpload,
+				context.Background(), expectedRequestID, inputFileUpload,
 			).
 			Return(updatedFileUpload, nil)
 
@@ -467,12 +467,151 @@ func (s *RegistryTestSuite) TestMarkFileUploadUploaded() {
 
 			registry := registry.New(clock, s.mockInTransactioner, nil)
 
-			registeredFileUpload, err := registry.MarkFileUploadUploaded(
+			uploadedFileUpload, err := registry.MarkFileUploadUploaded(
 				context.Background(),
 				inputFileUpload,
 			)
 
-			s.Require().Nil(registeredFileUpload)
+			s.Require().Nil(uploadedFileUpload)
+			s.ErrorIs(err, expectedErr)
+		})
+	})
+}
+
+func (s *RegistryTestSuite) TestMarkFileUploadDeleted() {
+	inputFileUpload := &models.FileUpload{
+		ID: "foo",
+	}
+	updatedFileUpload := &models.FileUpload{
+		ID:                  "foo",
+		UploadedAtTimestamp: time.Unix(1, 0),
+	}
+	expectedRequestID := inputFileUpload.ID + "_deleted"
+
+	s.Run("deletes file upload in store", func() {
+		clock := &MockClock{}
+
+		s.mockInTransactioner.EXPECT().
+			InTransaction(context.Background(), gomock.Any()).
+			DoAndReturn(s.mockInTransaction)
+		s.mockStore.EXPECT().
+			GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
+			Return(nil, models.ChangeTypeDelete, pkgerrors.ErrNotFound)
+		s.mockStore.EXPECT().
+			UpdateFileUpload(
+				context.Background(), expectedRequestID, inputFileUpload,
+			).
+			Return(updatedFileUpload, nil)
+
+		registry := registry.New(clock, s.mockInTransactioner, nil)
+
+		err := registry.MarkFileUploadDeleted(
+			context.Background(),
+			inputFileUpload,
+		)
+
+		s.Require().NoError(err)
+	})
+
+	s.Run("handles existing file upload for matching change request", func() {
+		s.Run("and returns existing file upload for matching change type", func() {
+			clock := &MockClock{}
+
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				DoAndReturn(s.mockInTransaction)
+			s.mockStore.EXPECT().
+				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
+				Return(updatedFileUpload, models.ChangeTypeDelete, nil)
+
+			registry := registry.New(clock, s.mockInTransactioner, nil)
+
+			err := registry.MarkFileUploadDeleted(
+				context.Background(),
+				inputFileUpload,
+			)
+
+			s.Require().NoError(err)
+		})
+		s.Run("and returns error for conflicting change type", func() {
+			clock := &MockClock{}
+
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				DoAndReturn(s.mockInTransaction)
+			s.mockStore.EXPECT().
+				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
+				Return(updatedFileUpload, models.ChangeTypeCreate, nil)
+
+			registry := registry.New(clock, s.mockInTransactioner, nil)
+
+			err := registry.MarkFileUploadDeleted(
+				context.Background(),
+				inputFileUpload,
+			)
+
+			s.ErrorIs(err, pkgerrors.ErrInvalidRequestID)
+		})
+	})
+
+	s.Run("forwards error", func() {
+		expectedErr := errors.New("oh no")
+
+		s.Run("from InTransactioner", func() {
+			clock := &MockClock{}
+
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				Return(nil, expectedErr)
+
+			registry := registry.New(clock, s.mockInTransactioner, nil)
+
+			err := registry.MarkFileUploadDeleted(
+				context.Background(),
+				inputFileUpload,
+			)
+
+			s.ErrorIs(err, expectedErr)
+		})
+		s.Run("from get file upload for change request ID", func() {
+			clock := &MockClock{}
+
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				DoAndReturn(s.mockInTransaction)
+			s.mockStore.EXPECT().
+				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
+				Return(nil, models.ChangeType(0), expectedErr)
+
+			registry := registry.New(clock, s.mockInTransactioner, nil)
+
+			err := registry.MarkFileUploadDeleted(
+				context.Background(),
+				inputFileUpload,
+			)
+
+			s.ErrorIs(err, expectedErr)
+		})
+		s.Run("from update file upload ", func() {
+			clock := &MockClock{}
+
+			s.mockInTransactioner.EXPECT().
+				InTransaction(context.Background(), gomock.Any()).
+				DoAndReturn(s.mockInTransaction)
+			s.mockStore.EXPECT().
+				GetFileUploadByChangeRequestID(context.Background(), expectedRequestID).
+				Return(nil, models.ChangeTypeDelete, pkgerrors.ErrNotFound)
+			s.mockStore.EXPECT().
+				UpdateFileUpload(context.Background(), expectedRequestID, inputFileUpload).
+				Return(nil, expectedErr)
+
+			registry := registry.New(clock, s.mockInTransactioner, nil)
+
+			err := registry.MarkFileUploadDeleted(
+				context.Background(),
+				inputFileUpload,
+			)
+
 			s.ErrorIs(err, expectedErr)
 		})
 	})

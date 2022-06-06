@@ -74,6 +74,20 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
 }
 
+// DeleteFileUpload mocks base method.
+func (m *MockStore) DeleteFileUpload(ctx context.Context, requestID string, fileUpload *models.FileUpload) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteFileUpload", ctx, requestID, fileUpload)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteFileUpload indicates an expected call of DeleteFileUpload.
+func (mr *MockStoreMockRecorder) DeleteFileUpload(ctx, requestID, fileUpload interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFileUpload", reflect.TypeOf((*MockStore)(nil).DeleteFileUpload), ctx, requestID, fileUpload)
+}
+
 // GetFileUploadByChangeRequestID mocks base method.
 func (m *MockStore) GetFileUploadByChangeRequestID(ctx context.Context, requestID string) (*models.FileUpload, models.ChangeType, error) {
 	m.ctrl.T.Helper()

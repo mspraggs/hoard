@@ -62,6 +62,8 @@ const (
 	ChangeTypeCreate ChangeType = 1
 	// ChangeTypeUpdate denotes a mutation change type.
 	ChangeTypeUpdate ChangeType = 2
+	// ChangeTypeDelete denotes a deletion change type.
+	ChangeTypeDelete ChangeType = 3
 )
 
 // StorageClass describes a file upload's storage class as an integer.
