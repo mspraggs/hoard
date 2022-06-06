@@ -75,6 +75,26 @@ func (mr *MockBackendClientMockRecorder) CreateMultipartUpload(ctx, input interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMultipartUpload", reflect.TypeOf((*MockBackendClient)(nil).CreateMultipartUpload), varargs...)
 }
 
+// DeleteObject mocks base method.
+func (m *MockBackendClient) DeleteObject(ctx context.Context, input *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteObject", varargs...)
+	ret0, _ := ret[0].(*s3.DeleteObjectOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteObject indicates an expected call of DeleteObject.
+func (mr *MockBackendClientMockRecorder) DeleteObject(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteObject", reflect.TypeOf((*MockBackendClient)(nil).DeleteObject), varargs...)
+}
+
 // PutObject mocks base method.
 func (m *MockBackendClient) PutObject(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 	m.ctrl.T.Helper()

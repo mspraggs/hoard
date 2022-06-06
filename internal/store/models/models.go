@@ -75,6 +75,9 @@ type PutObjectInput s3.PutObjectInput
 // instances.
 type PutObjectInputOption func(*PutObjectInput)
 
+// DeleteObjectInput defines the input data required to delete a file upload.
+type DeleteObjectInput s3.DeleteObjectInput
+
 // NewEncryptionKeyFromBusiness creates a store EncryptionKey from a
 // business EncryptionKey.
 func NewEncryptionKeyFromBusiness(key models.EncryptionKey) EncryptionKey {
@@ -245,6 +248,15 @@ func (fu *FileUpload) ToPutObjectInput() *PutObjectInput {
 	}
 
 	return input
+}
+
+// ToDeleteObjectInput constructs a DeleteObjectInput from the file upload this
+// method is called on.
+func (fu *FileUpload) ToDeleteObjectInput() *DeleteObjectInput {
+	return &DeleteObjectInput{
+		Bucket: &fu.Bucket,
+		Key:    &fu.Key,
+	}
 }
 
 func md5Hash(input []byte) string {

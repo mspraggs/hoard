@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"database/sql"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -70,7 +69,7 @@ func (c *Backup) uploadFiles(config *config.Config, d *sql.DB, client *s3.Client
 	}
 
 	for _, dir := range config.Directories {
-		err = processDirectory(dir, inTxner, client, config, c.EncryptionSecret)
+		err = processDirectory(config.Uploads, dir, inTxner, client, config, c.EncryptionSecret)
 		if err != nil {
 			c.log.Warnw("Unable to process directory", "error", err)
 		}
@@ -103,6 +102,7 @@ func (c *Backup) storeRegistry(cfg config.RegConfig, client *s3.Client) error {
 }
 
 func processDirectory(
+	uploads config.UploadConfig,
 	dir config.DirConfig,
 	inTxner *db.InTransactioner,
 	client *s3.Client,
@@ -118,7 +118,7 @@ func processDirectory(
 	)
 
 	store := store.New(
-		fs, makeUploaderConstructor(client, config.Uploads.MultiUploadThreshold),
+		store.NewAWSClient(uploads.MultiUploadThreshold, client), fs,
 		config.Uploads.ChecksumAlgorithm.ToBusiness(),
 		util.NewEncryptionKeyGenerator([]byte(secret)),
 		dir.StorageClass.ToBusiness(),
@@ -136,18 +136,4 @@ func processDirectory(
 		Build()
 
 	return scanner.Scan(context.Background())
-}
-
-func makeUploaderConstructor(client *s3.Client, chunksize int64) store.UploaderConstructor {
-	return func(file fs.File) (store.Uploader, error) {
-		info, err := file.Stat()
-		if err != nil {
-			return nil, err
-		}
-		size := info.Size()
-		if size >= chunksize {
-			return store.NewMultiUploader(size, chunksize, client), nil
-		}
-		return store.NewSingleUploader(client), nil
-	}
 }
