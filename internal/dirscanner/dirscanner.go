@@ -2,13 +2,13 @@ package dirscanner
 
 import (
 	"context"
-	"encoding/base64"
 	"io/fs"
 	"sync"
 
 	"go.uber.org/zap"
 
-	"github.com/mspraggs/hoard/internal/models"
+	"github.com/mspraggs/hoard/internal/processor"
+	"github.com/mspraggs/hoard/internal/util"
 )
 
 //go:generate mockgen -destination=./mocks/dirscanner.go -package=mocks -source=$GOFILE
@@ -16,43 +16,36 @@ import (
 // Processor is the interface required to handle file uploads produced by the
 // DirScanner instance.
 type Processor interface {
-	UploadFileUpload(
-		ctx context.Context,
-		upload *models.FileUpload,
-	) (*models.FileUpload, error)
-}
-
-// VersionCalculator is the interface required to derive a version string from a
-// file path.
-type VersionCalculator interface {
-	CalculateVersion(path string) (string, error)
-}
-
-// Salter is the interface required to derive a cryptographic salt from a file
-// path.
-type Salter interface {
-	Salt(path string) ([]byte, error)
+	Process(ctx context.Context, path string) (*processor.File, error)
 }
 
 // DirScanner encapsulates the logic for scanning a directory hierarchy and
 // generating FileUpload objects from the files within.
 type DirScanner struct {
 	fs                fs.FS
-	vc                VersionCalculator
-	salter            Salter
-	bucket            string
-	encAlg            models.EncryptionAlgorithm
 	numHandlerThreads int
 	processors        []Processor
-	uploadQueue       chan *models.FileUpload
+	pathQueue         chan string
 	wg                *sync.WaitGroup
 	log               *zap.SugaredLogger
+}
+
+// New instantiates a new directory scanner instance with the provided options.
+func New(fs fs.FS, processors []Processor, numThreads int) *DirScanner {
+	return &DirScanner{
+		fs:                fs,
+		numHandlerThreads: numThreads,
+		processors:        processors,
+		pathQueue:         make(chan string),
+		wg:                &sync.WaitGroup{},
+		log:               util.MustNewLogger(),
+	}
 }
 
 // Scan traverses the filesystem and runs all registered processors on all
 // regular files.
 func (s *DirScanner) Scan(ctx context.Context) error {
-	s.uploadQueue = make(chan *models.FileUpload)
+	s.pathQueue = make(chan string)
 
 	for i := 0; i < s.numHandlerThreads; i++ {
 		s.wg.Add(1)
@@ -77,31 +70,12 @@ func (s *DirScanner) Scan(ctx context.Context) error {
 			return nil
 		}
 
-		version, err := s.vc.CalculateVersion(path)
-		if err != nil {
-			s.log.Warnw("Failed to calculate file version", "error", err, "path", path)
-			return nil
-		}
-		salt, err := s.salter.Salt(path)
-		if err != nil {
-			s.log.Warnw("Failed to generate file salt", "error", err, "path", path)
-			return nil
-		}
-
-		fileUpload := &models.FileUpload{
-			LocalPath:           path,
-			Bucket:              s.bucket,
-			Version:             version,
-			Salt:                base64.RawStdEncoding.EncodeToString(salt),
-			EncryptionAlgorithm: s.encAlg,
-		}
-
-		s.uploadQueue <- fileUpload
+		s.pathQueue <- path
 
 		return nil
 	})
 
-	close(s.uploadQueue)
+	close(s.pathQueue)
 
 	s.wg.Wait()
 
@@ -113,14 +87,14 @@ func (s *DirScanner) uploadFileUploads(ctx context.Context) {
 
 	for {
 		select {
-		case fu, ok := <-s.uploadQueue:
+		case path, ok := <-s.pathQueue:
 			if !ok {
 				return
 			}
-			for _, handler := range s.processors {
-				_, err := handler.UploadFileUpload(ctx, fu)
+			for _, p := range s.processors {
+				file, err := p.Process(ctx, path)
 				if err != nil {
-					s.log.Warnw("Error handling file upload", "error", err, "file_upload", fu)
+					s.log.Warnw("Error processing file", "error", err, "file", file)
 				}
 			}
 		case <-ctx.Done():

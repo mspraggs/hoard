@@ -2,18 +2,19 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"os"
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/mspraggs/hoard/internal/config"
 	"github.com/mspraggs/hoard/internal/db"
 	"github.com/mspraggs/hoard/internal/dirscanner"
 	"github.com/mspraggs/hoard/internal/processor"
-	"github.com/mspraggs/hoard/internal/registry"
 	"github.com/mspraggs/hoard/internal/store"
 	"github.com/mspraggs/hoard/internal/util"
 )
@@ -63,14 +64,17 @@ func (c *Backup) Execute(args []string) error {
 func (c *Backup) uploadFiles(config *config.Config, d *sql.DB, client *s3.Client) error {
 	defer d.Close()
 
-	inTxner, err := newTransactioner(d)
-	if err != nil {
-		return err
-	}
+	inTxner := newTransactioner(d)
 
 	for _, dir := range config.Directories {
-		err = processDirectory(config.Uploads, dir, inTxner, client, config, c.EncryptionSecret)
-		if err != nil {
+		if err := processDirectory(
+			config.Uploads,
+			dir,
+			inTxner,
+			client,
+			config,
+			c.EncryptionSecret,
+		); err != nil {
 			c.log.Warnw("Unable to process directory", "error", err)
 		}
 	}
@@ -104,7 +108,7 @@ func (c *Backup) storeRegistry(cfg config.RegConfig, client *s3.Client) error {
 func processDirectory(
 	uploads config.UploadConfig,
 	dir config.DirConfig,
-	inTxner *db.InTransactioner,
+	inTxner db.InTransactioner,
 	client *s3.Client,
 	config *config.Config,
 	secret string,
@@ -112,28 +116,47 @@ func processDirectory(
 
 	fs := os.DirFS(dir.Path)
 
-	registry := registry.New(
-		&util.Clock{}, &inTransactioner{inTxner},
-		util.NewRequestIDMaker(),
+	registry := db.NewRegistry(
+		&util.Clock{},
+		inTxner,
+		db.NewGoquCreator(),
+		db.NewGoquLatestFetcher(),
+		rng{},
 	)
 
 	store := store.New(
-		store.NewAWSClient(uploads.MultiUploadThreshold, client), fs,
-		config.Uploads.ChecksumAlgorithm.ToBusiness(),
-		util.NewEncryptionKeyGenerator([]byte(secret)),
-		dir.StorageClass.ToBusiness(),
+		client,
+		fs,
+		util.NewEncryptionKeyGenerator(
+			[]byte(secret), dir.EncryptionAlgorithm.ToInternal().KeyLen(),
+		),
+		rng{},
+		dir.Bucket,
+		store.WithChecksumAlgorithm(uploads.ChecksumAlgorithm.ToInternal()),
+		store.WithChunkSize(uploads.MultiUploadThreshold),
+		store.WithEncryptionAlgorithm(dir.EncryptionAlgorithm.ToInternal()),
+		store.WithStorageClass(dir.StorageClass.ToInternal()),
 	)
 
-	handler := processor.New(store, registry)
+	handler := processor.New(fs, rng{}, store, registry)
 
-	scanner := dirscanner.NewBuilder().
-		WithBucket(dir.Bucket).
-		WithFS(fs).
-		WithNumHandlerThreads(config.NumThreads).
-		WithEncryptionAlgorithm(dir.EncryptionAlgorithm.ToBusiness()).
-		WithVersionCalculator(util.NewVersionCalculator(fs)).
-		AddProcessor(handler).
-		Build()
+	scanner := dirscanner.New(fs, []dirscanner.Processor{handler}, config.NumThreads)
 
 	return scanner.Scan(context.Background())
+}
+
+type rng struct{}
+
+func (g rng) GenerateID() string {
+	return uuid.NewString()
+}
+
+func (g rng) GenerateKey() string {
+	return g.GenerateID()
+}
+
+func (g rng) Salt() []byte {
+	salt := make([]byte, 64)
+	rand.Read(salt)
+	return salt
 }

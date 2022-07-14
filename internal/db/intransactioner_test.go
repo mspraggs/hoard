@@ -6,92 +6,75 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/doug-martin/goqu"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/mspraggs/hoard/internal/db"
-	"github.com/mspraggs/hoard/internal/models"
 )
 
 type InTransactionerTestSuite struct {
-	suite.Suite
-	db *goqu.Database
+	dbTestSuite
 }
 
 func TestInTransactionerTestSuite(t *testing.T) {
 	suite.Run(t, new(InTransactionerTestSuite))
 }
 
-func (s *InTransactionerTestSuite) SetupSuite() {
-	db, err := sql.Open("sqlite3", ":memory:")
-	if err != nil {
-		panic(err)
-	}
-
-	instance, err := sqlite3.WithInstance(db, &sqlite3.Config{})
-	if err != nil {
-		panic(err)
-	}
-
-	migration, err := migrate.NewWithDatabaseInstance(
-		"file://../../migrations", "sqlite3", instance,
-	)
-
-	if err := migration.Up(); err != nil && err != migrate.ErrNoChange {
-		panic(err)
-	}
-
-	s.db = goqu.New("sqlite3", db)
-}
-
 func (s *InTransactionerTestSuite) TestInTransaction() {
+	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
+
 	s.Run("calls transaction function and returns result from DB", func() {
-		fileUpload := &models.FileUpload{ID: "foo"}
+		txnFn := &txnFuncer{req: s.Require()}
 
 		inTxner := db.NewInTransactioner(s.db)
 
-		opaqueResult, err := inTxner.InTransaction(
-			context.Background(),
-			func(ctx context.Context, s *db.Store) (interface{}, error) {
-				return fileUpload, nil
-			},
-		)
+		err := inTxner.InTransaction(ctx, txnFn.call)
 
 		s.Require().NoError(err)
-		s.Equal(fileUpload, opaqueResult)
+		s.Require().Equal(1, txnFn.callCount)
 	})
 
 	s.Run("returns error from transaction function", func() {
 		expectedErr := errors.New("oh no")
+
+		txnFn := &txnFuncer{req: s.Require(), err: expectedErr}
+
 		inTxner := db.NewInTransactioner(s.db)
 
-		opaqueResult, err := inTxner.InTransaction(
-			context.Background(),
-			func(ctx context.Context, s *db.Store) (interface{}, error) {
-				return nil, expectedErr
-			},
-		)
+		err := inTxner.InTransaction(ctx, txnFn.call)
 
-		s.Require().Nil(opaqueResult)
-		s.ErrorIs(expectedErr, err)
+		s.ErrorIs(err, expectedErr)
+		s.Require().Equal(1, txnFn.callCount)
 	})
 
 	s.Run("returns error on begin transaction failure", func() {
 		inTxner := db.NewInTransactioner(s.db)
 
-		s.db.Db.Close()
+		s.db.Close()
 		defer s.SetupSuite()
 
-		opaqueResult, err := inTxner.InTransaction(
-			context.Background(),
-			func(ctx context.Context, s *db.Store) (interface{}, error) {
-				return nil, nil
-			},
-		)
+		err := inTxner.InTransaction(context.Background(), nil)
 
-		s.Require().Nil(opaqueResult)
-		s.ErrorContains(err, "is closed")
+		s.ErrorContains(err, "database is closed")
 	})
+}
+
+func (s *InTransactionerTestSuite) wrap(arg interface{}) error {
+	if f, ok := arg.(func() error); ok {
+		return f()
+	}
+	s.FailNow("Invalid argument type to Wrap")
+	return nil
+}
+
+type txnFuncer struct {
+	req       *require.Assertions
+	callCount int
+	err       error
+}
+
+func (f *txnFuncer) call(ctx context.Context, tx db.Tx) error {
+	f.req.IsType(&sql.Tx{}, tx)
+	f.callCount += 1
+	return f.err
 }

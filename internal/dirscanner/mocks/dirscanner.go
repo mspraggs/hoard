@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	models "github.com/mspraggs/hoard/internal/models"
+	processor "github.com/mspraggs/hoard/internal/processor"
 )
 
 // MockProcessor is a mock of Processor interface.
@@ -35,93 +35,17 @@ func (m *MockProcessor) EXPECT() *MockProcessorMockRecorder {
 	return m.recorder
 }
 
-// UploadFileUpload mocks base method.
-func (m *MockProcessor) UploadFileUpload(ctx context.Context, upload *models.FileUpload) (*models.FileUpload, error) {
+// Process mocks base method.
+func (m *MockProcessor) Process(ctx context.Context, path string) (*processor.File, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UploadFileUpload", ctx, upload)
-	ret0, _ := ret[0].(*models.FileUpload)
+	ret := m.ctrl.Call(m, "Process", ctx, path)
+	ret0, _ := ret[0].(*processor.File)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// UploadFileUpload indicates an expected call of UploadFileUpload.
-func (mr *MockProcessorMockRecorder) UploadFileUpload(ctx, upload interface{}) *gomock.Call {
+// Process indicates an expected call of Process.
+func (mr *MockProcessorMockRecorder) Process(ctx, path interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadFileUpload", reflect.TypeOf((*MockProcessor)(nil).UploadFileUpload), ctx, upload)
-}
-
-// MockVersionCalculator is a mock of VersionCalculator interface.
-type MockVersionCalculator struct {
-	ctrl     *gomock.Controller
-	recorder *MockVersionCalculatorMockRecorder
-}
-
-// MockVersionCalculatorMockRecorder is the mock recorder for MockVersionCalculator.
-type MockVersionCalculatorMockRecorder struct {
-	mock *MockVersionCalculator
-}
-
-// NewMockVersionCalculator creates a new mock instance.
-func NewMockVersionCalculator(ctrl *gomock.Controller) *MockVersionCalculator {
-	mock := &MockVersionCalculator{ctrl: ctrl}
-	mock.recorder = &MockVersionCalculatorMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockVersionCalculator) EXPECT() *MockVersionCalculatorMockRecorder {
-	return m.recorder
-}
-
-// CalculateVersion mocks base method.
-func (m *MockVersionCalculator) CalculateVersion(path string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CalculateVersion", path)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CalculateVersion indicates an expected call of CalculateVersion.
-func (mr *MockVersionCalculatorMockRecorder) CalculateVersion(path interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalculateVersion", reflect.TypeOf((*MockVersionCalculator)(nil).CalculateVersion), path)
-}
-
-// MockSalter is a mock of Salter interface.
-type MockSalter struct {
-	ctrl     *gomock.Controller
-	recorder *MockSalterMockRecorder
-}
-
-// MockSalterMockRecorder is the mock recorder for MockSalter.
-type MockSalterMockRecorder struct {
-	mock *MockSalter
-}
-
-// NewMockSalter creates a new mock instance.
-func NewMockSalter(ctrl *gomock.Controller) *MockSalter {
-	mock := &MockSalter{ctrl: ctrl}
-	mock.recorder = &MockSalterMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSalter) EXPECT() *MockSalterMockRecorder {
-	return m.recorder
-}
-
-// Salt mocks base method.
-func (m *MockSalter) Salt(path string) ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Salt", path)
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Salt indicates an expected call of Salt.
-func (mr *MockSalterMockRecorder) Salt(path interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Salt", reflect.TypeOf((*MockSalter)(nil).Salt), path)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Process", reflect.TypeOf((*MockProcessor)(nil).Process), ctx, path)
 }

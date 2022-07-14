@@ -1,12 +1,11 @@
 package config
 
 import (
-	"time"
-
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/mspraggs/hoard/internal/models"
+	"github.com/mspraggs/hoard/internal/store"
 )
 
 // LogLevel is the YAML configuration representation of the configured log
@@ -26,9 +25,9 @@ const (
 type ChecksumAlgorithm string
 
 const (
-	// ChecksumAlgorithmSHA256 is the YAML configuration representation of the
-	// SHA256 checksum algorithm.
-	ChecksumAlgorithmSHA256 ChecksumAlgorithm = "SHA256"
+	// ChecksumAlgorithmCRC32 is the YAML configuration representation of the
+	// CRC32 checksum algorithm.
+	ChecksumAlgorithmCRC32 ChecksumAlgorithm = "CRC32"
 )
 
 // EncryptionAlgorithm is the YAML configuration representation of a configured
@@ -99,12 +98,11 @@ type DirConfig struct {
 	Path                string              `yaml:"path"`
 	EncryptionAlgorithm EncryptionAlgorithm `yaml:"encryption_algorithm"`
 	StorageClass        StorageClass        `yaml:"storage_class"`
-	RetentionPeriod     time.Duration       `yaml:"retention_period"`
 }
 
-// ToBusiness converts the YAML representation of a log level to the equivalent
-// business model representation.
-func (l LogLevel) ToBusiness() zapcore.Level {
+// ToInternal converts the YAML representation of a log level to the equivalent
+// internal representation.
+func (l LogLevel) ToInternal() zapcore.Level {
 	switch l {
 	case LogLevelDebug:
 		return zap.DebugLevel
@@ -118,41 +116,41 @@ func (l LogLevel) ToBusiness() zapcore.Level {
 	return zap.InfoLevel
 }
 
-// ToBusiness converts the YAML represetnation of a checksum algorithm to the
-// equivalent buisness model representation.
-func (a ChecksumAlgorithm) ToBusiness() models.ChecksumAlgorithm {
+// ToInternal converts the YAML represetnation of a checksum algorithm to the
+// equivalent internal represenation.
+func (a ChecksumAlgorithm) ToInternal() store.ChecksumAlgorithm {
 	switch a {
-	case ChecksumAlgorithmSHA256:
-		return models.ChecksumAlgorithmSHA256
+	case ChecksumAlgorithmCRC32:
+		return types.ChecksumAlgorithmCrc32
 	default:
-		return models.ChecksumAlgorithm(0)
+		return types.ChecksumAlgorithm("")
 	}
 }
 
-// ToBusiness converts the YAML represetnation of a encryption algorithm to the
-// equivalent buisness model representation.
-func (a EncryptionAlgorithm) ToBusiness() models.EncryptionAlgorithm {
+// ToInternal converts the YAML represetnation of a encryption algorithm to the
+// equivalent internal represenation.
+func (a EncryptionAlgorithm) ToInternal() store.EncryptionAlgorithm {
 	switch a {
 	case EncryptionAlgorithmAES256:
-		return models.EncryptionAlgorithmAES256
+		return store.EncryptionAlgorithm(types.ServerSideEncryptionAes256)
 	default:
-		return models.EncryptionAlgorithm(0)
+		return store.EncryptionAlgorithm(types.ServerSideEncryption(""))
 	}
 }
 
-// ToBusiness converts the YAML represetnation of a encryption algorithm to the
-// equivalent buisness model representation.
-func (c StorageClass) ToBusiness() models.StorageClass {
+// ToInternal converts the YAML represetnation of a encryption algorithm to the
+// equivalent internal represenation.
+func (c StorageClass) ToInternal() store.StorageClass {
 	switch c {
 	case StorageClassStandard:
-		return models.StorageClassStandard
+		return types.StorageClassStandard
 	case StorageClassArchiveFlexi:
-		return models.StorageClassArchiveFlexi
+		return types.StorageClassGlacier
 	case StorageClassArchiveDeep:
-		return models.StorageClassArchiveDeep
+		return types.StorageClassDeepArchive
 	case StorageClassArchiveInstant:
-		return models.StorageClassArchiveInstant
+		return types.StorageClassGlacierIr
 	default:
-		return models.StorageClass(0)
+		return types.StorageClass("")
 	}
 }

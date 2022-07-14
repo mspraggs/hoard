@@ -2,7 +2,6 @@ package dirscanner_test
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"io/fs"
 	"path/filepath"
@@ -14,17 +13,15 @@ import (
 
 	"github.com/mspraggs/hoard/internal/dirscanner"
 	"github.com/mspraggs/hoard/internal/dirscanner/mocks"
-	"github.com/mspraggs/hoard/internal/models"
+	"github.com/mspraggs/hoard/internal/processor"
 )
 
 var errPathNotFound = errors.New("path not found")
 
 type DirScannerTestSuite struct {
 	suite.Suite
-	controller            *gomock.Controller
-	mockProcessor         *mocks.MockProcessor
-	mockVersionCalculator *mocks.MockVersionCalculator
-	mockSalter            *mocks.MockSalter
+	controller    *gomock.Controller
+	mockProcessor *mocks.MockProcessor
 }
 
 func TestDirScannerTestSuite(t *testing.T) {
@@ -34,16 +31,10 @@ func TestDirScannerTestSuite(t *testing.T) {
 func (s *DirScannerTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
 	s.mockProcessor = mocks.NewMockProcessor(s.controller)
-	s.mockVersionCalculator = mocks.NewMockVersionCalculator(s.controller)
-	s.mockSalter = mocks.NewMockSalter(s.controller)
 }
 
 func (s *DirScannerTestSuite) TestScan() {
-	bucket := "some-bucket"
 	numThreads := 2
-	version := "some-version"
-	salt := []byte{1, 2, 3, 4, 5}
-	encryptionAlgorithm := models.EncryptionAlgorithmAES256
 
 	paths := []string{
 		"foo/bar",
@@ -51,27 +42,15 @@ func (s *DirScannerTestSuite) TestScan() {
 		"top-level",
 		"some/deeply/nested/path",
 	}
-	uploads := newTestFileUploadsFromPaths(paths, bucket, encryptionAlgorithm, version, salt)
-
-	versionCalculatorNoError := &fakeVersionCalculator{version, nil}
-	salterNoError := &fakeSalter{salt, nil}
 
 	s.Run("scans filesystem and handles uploads", func() {
 		ctx := context.Background()
 
 		fs := s.newMemFS(paths)
 
-		s.newHandlerCallsFromUploads(ctx, uploads)
+		s.newHandlerCallsFromPaths(ctx, paths)
 
-		dirScanner := dirscanner.NewBuilder().
-			WithFS(fs).
-			WithVersionCalculator(versionCalculatorNoError).
-			WithSalter(salterNoError).
-			WithBucket(bucket).
-			WithNumHandlerThreads(numThreads).
-			WithEncryptionAlgorithm(encryptionAlgorithm).
-			AddProcessor(s.mockProcessor).
-			Build()
+		dirScanner := dirscanner.New(fs, []dirscanner.Processor{s.mockProcessor}, numThreads)
 
 		dirScanner.Scan(ctx)
 	})
@@ -82,15 +61,7 @@ func (s *DirScannerTestSuite) TestScan() {
 
 		fs := s.newMemFS(paths)
 
-		dirScanner := dirscanner.NewBuilder().
-			WithFS(fs).
-			WithVersionCalculator(nil).
-			WithSalter(nil).
-			WithBucket(bucket).
-			WithNumHandlerThreads(numThreads).
-			WithEncryptionAlgorithm(encryptionAlgorithm).
-			AddProcessor(s.mockProcessor).
-			Build()
+		dirScanner := dirscanner.New(fs, []dirscanner.Processor{s.mockProcessor}, numThreads)
 
 		err := dirScanner.Scan(ctx)
 
@@ -100,62 +71,31 @@ func (s *DirScannerTestSuite) TestScan() {
 	s.Run("handles error", func() {
 		expectedErr := errors.New("oh no")
 		paths := []string{"foo"}
-		uploads := newTestFileUploadsFromPaths(paths, bucket, encryptionAlgorithm, version, salt)
 
 		fs := s.newMemFS(paths)
-		versionCalculatorError := &fakeVersionCalculator{"", expectedErr}
-		salterError := &fakeSalter{nil, expectedErr}
 
 		s.Run("from filesystem", func() {
 			ctx := context.Background()
 
-			dirScanner := dirscanner.NewBuilder().
-				WithFS(&fakeBadFS{expectedErr}).
-				WithVersionCalculator(nil).
-				WithSalter(nil).
-				AddProcessor(nil).
-				Build()
+			dirScanner := dirscanner.New(
+				&fakeBadFS{expectedErr},
+				[]dirscanner.Processor{s.mockProcessor},
+				numThreads,
+			)
 
 			dirScanner.Scan(ctx)
 		})
-		s.Run("from version calculator", func() {
-			ctx := context.Background()
-
-			dirScanner := dirscanner.NewBuilder().
-				WithFS(fs).
-				WithVersionCalculator(versionCalculatorError).
-				WithSalter(nil).
-				AddProcessor(nil).
-				Build()
-
-			dirScanner.Scan(ctx)
-		})
-		s.Run("from salter", func() {
-			ctx := context.Background()
-
-			dirScanner := dirscanner.NewBuilder().
-				WithFS(fs).
-				WithVersionCalculator(versionCalculatorNoError).
-				WithSalter(salterError).
-				AddProcessor(nil).
-				Build()
-
-			dirScanner.Scan(ctx)
-		})
-		s.Run("from handler", func() {
+		s.Run("from processor", func() {
 			ctx := context.Background()
 
 			s.mockProcessor.EXPECT().
-				UploadFileUpload(ctx, uploads[0]).Return(nil, expectedErr)
+				Process(ctx, paths[0]).Return(nil, expectedErr)
 
-			dirScanner := dirscanner.NewBuilder().
-				WithFS(fs).
-				WithVersionCalculator(versionCalculatorNoError).
-				WithSalter(salterNoError).
-				WithBucket(bucket).
-				WithEncryptionAlgorithm(encryptionAlgorithm).
-				AddProcessor(s.mockProcessor).
-				Build()
+			dirScanner := dirscanner.New(
+				fs,
+				[]dirscanner.Processor{s.mockProcessor},
+				numThreads,
+			)
 
 			dirScanner.Scan(ctx)
 		})
@@ -175,43 +115,22 @@ func (s *DirScannerTestSuite) newMemFS(paths []string) *memfs.FS {
 	return memFS
 }
 
-func (s *DirScannerTestSuite) newHandlerCallsFromUploads(
+func (s *DirScannerTestSuite) newHandlerCallsFromPaths(
 	ctx context.Context,
-	uploads []*models.FileUpload,
+	paths []string,
 ) []*gomock.Call {
 
-	calls := make([]*gomock.Call, len(uploads))
+	calls := make([]*gomock.Call, len(paths))
 
-	for i, upload := range uploads {
+	for i, path := range paths {
+		file := &processor.File{
+			LocalPath: path,
+		}
 		calls[i] = s.mockProcessor.EXPECT().
-			UploadFileUpload(ctx, upload).Return(upload, nil)
+			Process(ctx, path).Return(file, nil)
 	}
 
 	return calls
-}
-
-func newTestFileUploadsFromPaths(
-	paths []string,
-	bucket string,
-	encAlg models.EncryptionAlgorithm,
-	version string,
-	salt []byte,
-) []*models.FileUpload {
-
-	uploads := make([]*models.FileUpload, len(paths))
-
-	for i, path := range paths {
-		upload := &models.FileUpload{
-			Bucket:              bucket,
-			LocalPath:           path,
-			Version:             version,
-			Salt:                base64.RawStdEncoding.EncodeToString(salt),
-			EncryptionAlgorithm: encAlg,
-		}
-		uploads[i] = upload
-	}
-
-	return uploads
 }
 
 type fakeBadFS struct {

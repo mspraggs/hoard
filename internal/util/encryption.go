@@ -1,12 +1,9 @@
 package util
 
 import (
-	"encoding/base64"
-	"fmt"
+	"encoding/json"
 
 	"golang.org/x/crypto/argon2"
-
-	"github.com/mspraggs/hoard/internal/models"
 )
 
 const (
@@ -20,37 +17,41 @@ const (
 // turn the provided secret and salt into an encryption key.
 type EncryptionKeyGenerator struct {
 	secret []byte
+	keyLen uint32
 }
 
 // NewEncryptionKeyGenerator instantiates a new EncryptionKeyGenerator instance
-// with the provided secret.
-func NewEncryptionKeyGenerator(secret []byte) *EncryptionKeyGenerator {
-	return &EncryptionKeyGenerator{secret}
+// with the provided secret and key length.
+func NewEncryptionKeyGenerator(secret []byte, keyLen uint32) *EncryptionKeyGenerator {
+	return &EncryptionKeyGenerator{secret, keyLen}
 }
 
-// GenerateKey generates an encryption key from the provided file upload. The
-// key size is determined based on the encryption algorithm attached to the file
-// upload.
-func (ekg *EncryptionKeyGenerator) GenerateKey(
-	fileUpload *models.FileUpload,
-) (models.EncryptionKey, error) {
-
-	keyLen, err := fileUpload.EncryptionAlgorithm.KeySize()
-	if err != nil {
-		return models.EncryptionKey(nil), fmt.Errorf("unable to generate encryption key: %w", err)
-	}
-	salt, err := base64.RawStdEncoding.DecodeString(fileUpload.Salt)
-	if err != nil {
-		return models.EncryptionKey(nil), fmt.Errorf("unable to decode file upload salt: %w", err)
-	}
-	keyBytes := argon2.Key(
+// GenerateKey generates an encryption key from the provided salt and key
+// length.
+func (ekg *EncryptionKeyGenerator) GenerateKey(salt []byte) []byte {
+	return argon2.Key(
 		ekg.secret,
 		salt,
 		timeParam,
 		memParam,
 		threads,
-		keyLen,
+		ekg.keyLen,
 	)
+}
 
-	return models.EncryptionKey(keyBytes), nil
+// String serialises the parameters used by the encryption key generator.
+func (ekg *EncryptionKeyGenerator) String() string {
+	params := map[string]interface{}{
+		"algorithm": "argon2",
+		"time":      timeParam,
+		"memory":    memParam,
+		"threads":   threads,
+	}
+
+	paramsJSON, err := json.Marshal(params)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(paramsJSON)
 }

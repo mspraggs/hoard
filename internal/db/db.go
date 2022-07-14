@@ -2,116 +2,25 @@ package db
 
 import (
 	"context"
-
-	"github.com/doug-martin/goqu"
-	"github.com/google/uuid"
-
-	dbmodels "github.com/mspraggs/hoard/internal/db/models"
-	pkgerrors "github.com/mspraggs/hoard/internal/errors"
-	"github.com/mspraggs/hoard/internal/models"
+	"database/sql"
 )
 
-// Store encapsulates the logic for interacting with a database transaction.
-type Store struct {
-	tx *goqu.TxDatabase
+//go:generate mockgen -destination=./mocks/db.go -package=mocks -source=$GOFILE
+
+// Tx encapsulates a DB transaction.
+type Tx interface {
+	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+	PrepareContext(context.Context, string) (*sql.Stmt, error)
+	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
 }
 
-// NewStore instantiates a new Store instance with the provided database
-// transaction.
-func NewStore(tx *goqu.TxDatabase) *Store {
-	return &Store{tx}
+// DB encapsulates a database
+type DB interface {
+	Begin() (Tx, error)
 }
 
-// GetFileUploadByChangeRequestID fetches a file upload and change type from the
-// database using the provided request ID.
-func (s *Store) GetFileUploadByChangeRequestID(
-	ctx context.Context,
-	requestID string,
-) (*models.FileUpload, models.ChangeType, error) {
-
-	fileUploadHistoryRow := &dbmodels.FileUploadHistoryRow{}
-	found, err := s.tx.
-		From("file_uploads_history").
-		Select(goqu.Star()).
-		Where(goqu.I("request_id").Eq(requestID)).
-		ScanStructContext(ctx, fileUploadHistoryRow)
-	if err != nil {
-		return nil, models.ChangeType(0), err
-	}
-	if !found {
-		return nil, models.ChangeType(0), pkgerrors.ErrNotFound
-	}
-
-	fileUpload, _, changeType := fileUploadHistoryRow.ToBusiness()
-	return fileUpload, changeType, nil
-}
-
-// InsertFileUpload inserts a new file upload into the database. A row is also
-// added to the append-only history table for this resource.
-func (s *Store) InsertFileUpload(
-	ctx context.Context,
-	requestID string,
-	fileUpload *models.FileUpload,
-) (*models.FileUpload, error) {
-
-	if fileUpload.ID == "" {
-		fileUpload.ID = uuid.NewString()
-	}
-
-	fileUploadHistoryRow := dbmodels.NewFileUploadHistoryRowFromBusiness(
-		requestID, models.ChangeTypeCreate, fileUpload,
-	)
-	if err := s.insertFileUploadHistoryRow(ctx, fileUploadHistoryRow); err != nil {
-		return nil, err
-	}
-
-	fileUploadRow := dbmodels.NewFileUploadRowFromBusiness(fileUpload)
-
-	_, err := s.tx.From("file_uploads").Insert(fileUploadRow).ExecContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return fileUpload, nil
-}
-
-// UpdateFileUpload updates an existing file upload in the database. A row is
-// also added to the append-only history table for this resource.
-func (s *Store) UpdateFileUpload(
-	ctx context.Context,
-	requestID string,
-	fileUpload *models.FileUpload,
-) (*models.FileUpload, error) {
-
-	fileUploadHistoryRow := dbmodels.NewFileUploadHistoryRowFromBusiness(
-		requestID, models.ChangeTypeUpdate, fileUpload,
-	)
-	if err := s.insertFileUploadHistoryRow(ctx, fileUploadHistoryRow); err != nil {
-		return nil, err
-	}
-
-	fileUploadRow := dbmodels.NewFileUploadRowFromBusiness(fileUpload)
-
-	_, err := s.tx.
-		From("file_uploads").
-		Where(goqu.I("id").Eq(fileUpload.ID)).
-		Update(fileUploadRow).
-		ExecContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return fileUpload, nil
-}
-
-func (s *Store) insertFileUploadHistoryRow(
-	ctx context.Context,
-	fileUploadHistoryRow *dbmodels.FileUploadHistoryRow,
-) error {
-
-	_, err := s.tx.
-		From("file_uploads_history").
-		Insert(fileUploadHistoryRow).
-		ExecContext(ctx)
-	return err
-}
+// TxnFunc defines the signature of the closure expected by an InTransactioner
+// instance. The closure accepts a Store instance, on which it can call methods
+// to interact with the database.
+type TxnFunc = func(context.Context, Tx) error

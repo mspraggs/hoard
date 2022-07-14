@@ -24,4 +24,4 @@ go.work
 .vscode
 
 # Binary
-hoard
+/hoard

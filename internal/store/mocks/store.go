@@ -8,10 +8,46 @@ import (
 	context "context"
 	reflect "reflect"
 
+	s3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	gomock "github.com/golang/mock/gomock"
-	models "github.com/mspraggs/hoard/internal/models"
-	models0 "github.com/mspraggs/hoard/internal/store/models"
 )
+
+// MockSalter is a mock of Salter interface.
+type MockSalter struct {
+	ctrl     *gomock.Controller
+	recorder *MockSalterMockRecorder
+}
+
+// MockSalterMockRecorder is the mock recorder for MockSalter.
+type MockSalterMockRecorder struct {
+	mock *MockSalter
+}
+
+// NewMockSalter creates a new mock instance.
+func NewMockSalter(ctrl *gomock.Controller) *MockSalter {
+	mock := &MockSalter{ctrl: ctrl}
+	mock.recorder = &MockSalterMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSalter) EXPECT() *MockSalterMockRecorder {
+	return m.recorder
+}
+
+// Salt mocks base method.
+func (m *MockSalter) Salt() []byte {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Salt")
+	ret0, _ := ret[0].([]byte)
+	return ret0
+}
+
+// Salt indicates an expected call of Salt.
+func (mr *MockSalterMockRecorder) Salt() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Salt", reflect.TypeOf((*MockSalter)(nil).Salt))
+}
 
 // MockEncryptionKeyGenerator is a mock of EncryptionKeyGenerator interface.
 type MockEncryptionKeyGenerator struct {
@@ -37,18 +73,31 @@ func (m *MockEncryptionKeyGenerator) EXPECT() *MockEncryptionKeyGeneratorMockRec
 }
 
 // GenerateKey mocks base method.
-func (m *MockEncryptionKeyGenerator) GenerateKey(fileUpload *models.FileUpload) (models.EncryptionKey, error) {
+func (m *MockEncryptionKeyGenerator) GenerateKey(salt []byte) []byte {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateKey", fileUpload)
-	ret0, _ := ret[0].(models.EncryptionKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "GenerateKey", salt)
+	ret0, _ := ret[0].([]byte)
+	return ret0
 }
 
 // GenerateKey indicates an expected call of GenerateKey.
-func (mr *MockEncryptionKeyGeneratorMockRecorder) GenerateKey(fileUpload interface{}) *gomock.Call {
+func (mr *MockEncryptionKeyGeneratorMockRecorder) GenerateKey(salt interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateKey", reflect.TypeOf((*MockEncryptionKeyGenerator)(nil).GenerateKey), fileUpload)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateKey", reflect.TypeOf((*MockEncryptionKeyGenerator)(nil).GenerateKey), salt)
+}
+
+// String mocks base method.
+func (m *MockEncryptionKeyGenerator) String() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "String")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// String indicates an expected call of String.
+func (mr *MockEncryptionKeyGeneratorMockRecorder) String() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "String", reflect.TypeOf((*MockEncryptionKeyGenerator)(nil).String))
 }
 
 // MockClient is a mock of Client interface.
@@ -74,30 +123,82 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
-// Delete mocks base method.
-func (m *MockClient) Delete(ctx context.Context, upload *models0.FileUpload) error {
+// CompleteMultipartUpload mocks base method.
+func (m *MockClient) CompleteMultipartUpload(ctx context.Context, input *s3.CompleteMultipartUploadInput, optFns ...func(*s3.Options)) (*s3.CompleteMultipartUploadOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, upload)
-	ret0, _ := ret[0].(error)
-	return ret0
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CompleteMultipartUpload", varargs...)
+	ret0, _ := ret[0].(*s3.CompleteMultipartUploadOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// Delete indicates an expected call of Delete.
-func (mr *MockClientMockRecorder) Delete(ctx, upload interface{}) *gomock.Call {
+// CompleteMultipartUpload indicates an expected call of CompleteMultipartUpload.
+func (mr *MockClientMockRecorder) CompleteMultipartUpload(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockClient)(nil).Delete), ctx, upload)
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteMultipartUpload", reflect.TypeOf((*MockClient)(nil).CompleteMultipartUpload), varargs...)
 }
 
-// Upload mocks base method.
-func (m *MockClient) Upload(ctx context.Context, upload *models0.FileUpload) error {
+// CreateMultipartUpload mocks base method.
+func (m *MockClient) CreateMultipartUpload(ctx context.Context, input *s3.CreateMultipartUploadInput, optFns ...func(*s3.Options)) (*s3.CreateMultipartUploadOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Upload", ctx, upload)
-	ret0, _ := ret[0].(error)
-	return ret0
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateMultipartUpload", varargs...)
+	ret0, _ := ret[0].(*s3.CreateMultipartUploadOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// Upload indicates an expected call of Upload.
-func (mr *MockClientMockRecorder) Upload(ctx, upload interface{}) *gomock.Call {
+// CreateMultipartUpload indicates an expected call of CreateMultipartUpload.
+func (mr *MockClientMockRecorder) CreateMultipartUpload(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upload", reflect.TypeOf((*MockClient)(nil).Upload), ctx, upload)
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMultipartUpload", reflect.TypeOf((*MockClient)(nil).CreateMultipartUpload), varargs...)
+}
+
+// PutObject mocks base method.
+func (m *MockClient) PutObject(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PutObject", varargs...)
+	ret0, _ := ret[0].(*s3.PutObjectOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutObject indicates an expected call of PutObject.
+func (mr *MockClientMockRecorder) PutObject(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutObject", reflect.TypeOf((*MockClient)(nil).PutObject), varargs...)
+}
+
+// UploadPart mocks base method.
+func (m *MockClient) UploadPart(ctx context.Context, input *s3.UploadPartInput, optFns ...func(*s3.Options)) (*s3.UploadPartOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UploadPart", varargs...)
+	ret0, _ := ret[0].(*s3.UploadPartOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UploadPart indicates an expected call of UploadPart.
+func (mr *MockClientMockRecorder) UploadPart(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadPart", reflect.TypeOf((*MockClient)(nil).UploadPart), varargs...)
 }

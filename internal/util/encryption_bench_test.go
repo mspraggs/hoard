@@ -2,15 +2,14 @@ package util_test
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"testing"
 
-	"github.com/mspraggs/hoard/internal/models"
 	"github.com/mspraggs/hoard/internal/util"
 )
 
 const (
 	numSecrets = 100000
+	keyLen     = 32
 	secretLen  = 50
 )
 
@@ -20,32 +19,24 @@ func BenchmarkGenerateKey(b *testing.B) {
 		b.Errorf("Unable to generate salts: %v", err)
 	}
 
-	fileUploads := make([]*models.FileUpload, len(salts))
-	for i, salt := range salts {
-		fileUploads[i] = &models.FileUpload{
-			Salt:                salt,
-			EncryptionAlgorithm: models.EncryptionAlgorithmAES256,
-		}
-	}
-
-	keyGen := util.NewEncryptionKeyGenerator([]byte("somerandompassword"))
+	keyGen := util.NewEncryptionKeyGenerator([]byte("somerandompassword"), keyLen)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		keyGen.GenerateKey(fileUploads[i%len(fileUploads)])
+		keyGen.GenerateKey(salts[i%len(salts)])
 	}
 }
 
-func generateBenchmarkSalts(num, len int) ([]string, error) {
-	salts := make([]string, numSecrets)
+func generateBenchmarkSalts(num, len int) ([][]byte, error) {
+	salts := make([][]byte, numSecrets)
 
 	for i := 0; i < num; i++ {
 		salt := make([]byte, secretLen)
 		if _, err := rand.Read(salt); err != nil {
 			return nil, err
 		}
-		salts[i] = base64.RawStdEncoding.EncodeToString(salt)
+		salts[i] = salt
 	}
 
 	return salts, nil
