@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/mattn/go-sqlite3 v1.14.13
+	github.com/nightlyone/lockfile v1.0.0
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/stretchr/testify v1.7.1
 	go.uber.org/zap v1.21.0

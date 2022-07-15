@@ -42,6 +42,12 @@ func (c *Backup) Execute(args []string) error {
 
 	c.configureLogging(&config.Logging)
 
+	unlock, err := c.tryLockPID(config.Lockfile)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	client, err := newClient(config)
 	if err != nil {
 		return err

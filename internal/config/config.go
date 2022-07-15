@@ -61,6 +61,7 @@ const (
 // Config contains all configuration necessary for the application to run.
 type Config struct {
 	NumThreads  int          `yaml:"num_threads"`
+	Lockfile    string       `yaml:"lock_file"`
 	Logging     LogConfig    `yaml:"logging"`
 	Registry    RegConfig    `yaml:"registry"`
 	Store       StoreConfig  `yaml:"store"`
