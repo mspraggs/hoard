@@ -30,16 +30,6 @@ const (
 	ChecksumAlgorithmCRC32 ChecksumAlgorithm = "CRC32"
 )
 
-// EncryptionAlgorithm is the YAML configuration representation of a configured
-// encryption algorithm.
-type EncryptionAlgorithm string
-
-const (
-	// EncryptionAlgorithmAES256 is the YAML configuration representation of the
-	// AES256 encryption algorithm.
-	EncryptionAlgorithmAES256 EncryptionAlgorithm = "AES256"
-)
-
 // StorageClass is the YAML configuration representation of a configured storage
 // class.
 type StorageClass string
@@ -77,8 +67,9 @@ type LogConfig struct {
 
 // RegConfig contains all configuration relating to the file registry.
 type RegConfig struct {
-	Bucket string `yaml:"bucket"`
-	Path   string `yaml:"path"`
+	Bucket      string `yaml:"bucket"`
+	Path        string `yaml:"path"`
+	SaltsRecord string `yaml:"salts_record"`
 }
 
 // StoreConfig contains all configuration relating to the file store.
@@ -95,10 +86,9 @@ type UploadConfig struct {
 // DirConfig contains all configuration required to configure a directory for
 // upload.
 type DirConfig struct {
-	Bucket              string              `yaml:"bucket"`
-	Path                string              `yaml:"path"`
-	EncryptionAlgorithm EncryptionAlgorithm `yaml:"encryption_algorithm"`
-	StorageClass        StorageClass        `yaml:"storage_class"`
+	Bucket       string       `yaml:"bucket"`
+	Path         string       `yaml:"path"`
+	StorageClass StorageClass `yaml:"storage_class"`
 }
 
 // ToInternal converts the YAML representation of a log level to the equivalent
@@ -128,18 +118,7 @@ func (a ChecksumAlgorithm) ToInternal() store.ChecksumAlgorithm {
 	}
 }
 
-// ToInternal converts the YAML represetnation of a encryption algorithm to the
-// equivalent internal represenation.
-func (a EncryptionAlgorithm) ToInternal() store.EncryptionAlgorithm {
-	switch a {
-	case EncryptionAlgorithmAES256:
-		return store.EncryptionAlgorithm(types.ServerSideEncryptionAes256)
-	default:
-		return store.EncryptionAlgorithm(types.ServerSideEncryption(""))
-	}
-}
-
-// ToInternal converts the YAML represetnation of a encryption algorithm to the
+// ToInternal converts the YAML represetnation of a storage class to the
 // equivalent internal represenation.
 func (c StorageClass) ToInternal() store.StorageClass {
 	switch c {

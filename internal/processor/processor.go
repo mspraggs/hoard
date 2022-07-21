@@ -14,26 +14,14 @@ import (
 // Checksum defines a CRC32 checksum as an unsigned 32-bit integer.
 type Checksum uint32
 
-// EncryptionAlgorithm denotes a particular encryption algorithm using an
-// integer.
-type EncryptionAlgorithm int
-
-const (
-	// EncryptionAlgorithmAES256 denotes the AES256 encryption algorithm.
-	EncryptionAlgorithmAES256 EncryptionAlgorithm = 1
-)
-
 // File encapsulates all information associated with a file.
 type File struct {
-	Key                 string
-	LocalPath           string
-	Checksum            Checksum
-	Bucket              string
-	ETag                string
-	Version             string
-	Salt                []byte
-	KeyParams           string
-	EncryptionAlgorithm EncryptionAlgorithm
+	Key       string
+	LocalPath string
+	Checksum  Checksum
+	Bucket    string
+	ETag      string
+	Version   string
 }
 
 // KeyGenerator defines the interface required to generate a random key.

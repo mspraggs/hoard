@@ -3,8 +3,6 @@ package store_test
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
-	"encoding/base64"
 	"errors"
 	"os"
 
@@ -20,21 +18,12 @@ func (s *StoreTestSuite) TestUpload() {
 	key := "some-key"
 	path := "some/path"
 	body := []byte{0, 1, 2, 3}
-	salt := []byte{4, 5, 6}
 
 	bucket := "some-bucket"
 	checksumAlgorithm := types.ChecksumAlgorithmCrc32
-	encryptionAlgorithm := processor.EncryptionAlgorithmAES256
 
-	encKey := []byte{8, 9, 0}
-	keyParams := "key-params"
 	eTag := "some-etag"
 	version := "some-version"
-
-	sseKey := base64.StdEncoding.EncodeToString(encKey)
-	hashedEncKey := md5.Sum(encKey)
-	sseKeyMD5 := base64.StdEncoding.EncodeToString(hashedEncKey[:])
-	sseAlg := string(types.ServerSideEncryptionAes256)
 
 	fs, err := newMemFS(map[string][]byte{path: body})
 	s.Require().NoError(err)
@@ -44,14 +33,11 @@ func (s *StoreTestSuite) TestUpload() {
 		LocalPath: path,
 	}
 	expectedOutputFile := &processor.File{
-		Key:                 key,
-		LocalPath:           path,
-		Bucket:              bucket,
-		Salt:                salt,
-		EncryptionAlgorithm: encryptionAlgorithm,
-		KeyParams:           keyParams,
-		ETag:                eTag,
-		Version:             version,
+		Key:       key,
+		LocalPath: path,
+		Bucket:    bucket,
+		ETag:      eTag,
+		Version:   version,
 	}
 
 	s.Run("given file smaller than chunk size", func() {
@@ -67,7 +53,6 @@ func (s *StoreTestSuite) TestUpload() {
 			putObjectInput := newTestPutObjectInput(
 				expectedOutputFile,
 				bucket,
-				encKey,
 				checksumAlgorithm,
 				file,
 			)
@@ -76,12 +61,6 @@ func (s *StoreTestSuite) TestUpload() {
 				VersionId: &version,
 			}
 
-			s.mockSalter.EXPECT().
-				Salt().Return(salt)
-			s.mockEncKeyGen.EXPECT().
-				GenerateKey(salt).Return(encKey)
-			s.mockEncKeyGen.EXPECT().
-				String().Return(keyParams)
 			s.mockClient.EXPECT().
 				PutObject(ctx, newPutObjectInputMatcher(putObjectInput)).
 				Return(putObjectOutput, nil)
@@ -89,8 +68,6 @@ func (s *StoreTestSuite) TestUpload() {
 			store := store.New(
 				s.mockClient,
 				fs,
-				s.mockEncKeyGen,
-				s.mockSalter,
 				bucket,
 				store.WithChunkSize(chunksize),
 			)
@@ -104,13 +81,10 @@ func (s *StoreTestSuite) TestUpload() {
 			ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 
 			expectedOutputFile := &processor.File{
-				Key:                 key,
-				LocalPath:           path,
-				Bucket:              bucket,
-				Salt:                salt,
-				EncryptionAlgorithm: encryptionAlgorithm,
-				KeyParams:           keyParams,
-				ETag:                eTag,
+				Key:       key,
+				LocalPath: path,
+				Bucket:    bucket,
+				ETag:      eTag,
 			}
 
 			file, err := fs.Open(path)
@@ -120,7 +94,6 @@ func (s *StoreTestSuite) TestUpload() {
 			putObjectInput := newTestPutObjectInput(
 				expectedOutputFile,
 				bucket,
-				encKey,
 				checksumAlgorithm,
 				file,
 			)
@@ -129,12 +102,6 @@ func (s *StoreTestSuite) TestUpload() {
 				VersionId: nil,
 			}
 
-			s.mockSalter.EXPECT().
-				Salt().Return(salt)
-			s.mockEncKeyGen.EXPECT().
-				GenerateKey(salt).Return(encKey)
-			s.mockEncKeyGen.EXPECT().
-				String().Return(keyParams)
 			s.mockClient.EXPECT().
 				PutObject(ctx, newPutObjectInputMatcher(putObjectInput)).
 				Return(putObjectOutput, nil)
@@ -142,8 +109,6 @@ func (s *StoreTestSuite) TestUpload() {
 			store := store.New(
 				s.mockClient,
 				fs,
-				s.mockEncKeyGen,
-				s.mockSalter,
 				bucket,
 				store.WithChunkSize(chunksize),
 			)
@@ -164,17 +129,10 @@ func (s *StoreTestSuite) TestUpload() {
 			putObjectInput := newTestPutObjectInput(
 				expectedOutputFile,
 				bucket,
-				encKey,
 				checksumAlgorithm,
 				file,
 			)
 
-			s.mockSalter.EXPECT().
-				Salt().Return(salt)
-			s.mockEncKeyGen.EXPECT().
-				GenerateKey(salt).Return(encKey)
-			s.mockEncKeyGen.EXPECT().
-				String().Return(keyParams)
 			s.mockClient.EXPECT().
 				PutObject(ctx, newPutObjectInputMatcher(putObjectInput)).
 				Return(nil, expectedErr)
@@ -182,8 +140,6 @@ func (s *StoreTestSuite) TestUpload() {
 			store := store.New(
 				s.mockClient,
 				fs,
-				s.mockEncKeyGen,
-				s.mockSalter,
 				bucket,
 				store.WithChunkSize(chunksize),
 			)
@@ -201,13 +157,10 @@ func (s *StoreTestSuite) TestUpload() {
 		chunksize := int64(3)
 
 		createMultipartUploadInput := &s3.CreateMultipartUploadInput{
-			Key:                  &key,
-			Bucket:               &bucket,
-			SSECustomerKey:       &sseKey,
-			SSECustomerKeyMD5:    &sseKeyMD5,
-			SSECustomerAlgorithm: &sseAlg,
-			ChecksumAlgorithm:    types.ChecksumAlgorithmCrc32,
-			StorageClass:         types.StorageClassStandard,
+			Key:               &key,
+			Bucket:            &bucket,
+			ChecksumAlgorithm: types.ChecksumAlgorithmCrc32,
+			StorageClass:      types.StorageClassStandard,
 		}
 		createMultipartUploadOutput := &s3.CreateMultipartUploadOutput{
 			UploadId: &uploadID,
@@ -227,10 +180,7 @@ func (s *StoreTestSuite) TestUpload() {
 					},
 				},
 			},
-			SSECustomerKey:       &sseKey,
-			SSECustomerKeyMD5:    &sseKeyMD5,
-			SSECustomerAlgorithm: &sseAlg,
-			UploadId:             &uploadID,
+			UploadId: &uploadID,
 		}
 		completeUploadOutput := &s3.CompleteMultipartUploadOutput{
 			ETag:      &eTag,
@@ -246,21 +196,15 @@ func (s *StoreTestSuite) TestUpload() {
 
 			uploadPartInputs := []*s3.UploadPartInput{
 				newTestUploadPartInput(
-					inputFile, bucket, encKey, uploadID, checksumAlgorithm, 1,
+					inputFile, bucket, uploadID, checksumAlgorithm, 1,
 					chunksize, bytes.NewReader(body[:chunksize]),
 				),
 				newTestUploadPartInput(
-					inputFile, bucket, encKey, uploadID, checksumAlgorithm, 2,
+					inputFile, bucket, uploadID, checksumAlgorithm, 2,
 					int64(1), bytes.NewReader(body[chunksize:]),
 				),
 			}
 
-			s.mockSalter.EXPECT().
-				Salt().Return(salt)
-			s.mockEncKeyGen.EXPECT().
-				GenerateKey(salt).Return(encKey)
-			s.mockEncKeyGen.EXPECT().
-				String().Return(keyParams)
 			s.mockClient.EXPECT().
 				CreateMultipartUpload(ctx, createMultipartUploadInput).
 				Return(createMultipartUploadOutput, nil)
@@ -279,8 +223,6 @@ func (s *StoreTestSuite) TestUpload() {
 			store := store.New(
 				s.mockClient,
 				fs,
-				s.mockEncKeyGen,
-				s.mockSalter,
 				bucket,
 				store.WithChunkSize(chunksize),
 			)
@@ -294,13 +236,10 @@ func (s *StoreTestSuite) TestUpload() {
 			ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 
 			expectedOutputFile := &processor.File{
-				Key:                 key,
-				LocalPath:           path,
-				Bucket:              bucket,
-				Salt:                salt,
-				EncryptionAlgorithm: encryptionAlgorithm,
-				KeyParams:           keyParams,
-				ETag:                eTag,
+				Key:       key,
+				LocalPath: path,
+				Bucket:    bucket,
+				ETag:      eTag,
 			}
 
 			file, err := fs.Open(path)
@@ -309,11 +248,11 @@ func (s *StoreTestSuite) TestUpload() {
 
 			uploadPartInputs := []*s3.UploadPartInput{
 				newTestUploadPartInput(
-					inputFile, bucket, encKey, uploadID, checksumAlgorithm, 1,
+					inputFile, bucket, uploadID, checksumAlgorithm, 1,
 					chunksize, bytes.NewReader(body[:chunksize]),
 				),
 				newTestUploadPartInput(
-					inputFile, bucket, encKey, uploadID, checksumAlgorithm, 2,
+					inputFile, bucket, uploadID, checksumAlgorithm, 2,
 					int64(1), bytes.NewReader(body[chunksize:]),
 				),
 			}
@@ -322,12 +261,6 @@ func (s *StoreTestSuite) TestUpload() {
 				ETag: &eTag,
 			}
 
-			s.mockSalter.EXPECT().
-				Salt().Return(salt)
-			s.mockEncKeyGen.EXPECT().
-				GenerateKey(salt).Return(encKey)
-			s.mockEncKeyGen.EXPECT().
-				String().Return(keyParams)
 			s.mockClient.EXPECT().
 				CreateMultipartUpload(ctx, createMultipartUploadInput).
 				Return(createMultipartUploadOutput, nil)
@@ -346,8 +279,6 @@ func (s *StoreTestSuite) TestUpload() {
 			store := store.New(
 				s.mockClient,
 				fs,
-				s.mockEncKeyGen,
-				s.mockSalter,
 				bucket,
 				store.WithChunkSize(chunksize),
 			)
@@ -367,12 +298,6 @@ func (s *StoreTestSuite) TestUpload() {
 				s.Require().NoError(err)
 				defer file.Close()
 
-				s.mockSalter.EXPECT().
-					Salt().Return(salt)
-				s.mockEncKeyGen.EXPECT().
-					GenerateKey(salt).Return(encKey)
-				s.mockEncKeyGen.EXPECT().
-					String().Return(keyParams)
 				s.mockClient.EXPECT().
 					CreateMultipartUpload(ctx, createMultipartUploadInput).
 					Return(nil, expectedErr)
@@ -380,8 +305,6 @@ func (s *StoreTestSuite) TestUpload() {
 				store := store.New(
 					s.mockClient,
 					fs,
-					s.mockEncKeyGen,
-					s.mockSalter,
 					bucket,
 					store.WithChunkSize(chunksize),
 				)
@@ -400,21 +323,15 @@ func (s *StoreTestSuite) TestUpload() {
 
 				uploadPartInputs := []*s3.UploadPartInput{
 					newTestUploadPartInput(
-						inputFile, bucket, encKey, uploadID, checksumAlgorithm, 1,
+						inputFile, bucket, uploadID, checksumAlgorithm, 1,
 						chunksize, bytes.NewReader(body[:chunksize]),
 					),
 					newTestUploadPartInput(
-						inputFile, bucket, encKey, uploadID, checksumAlgorithm, 2,
+						inputFile, bucket, uploadID, checksumAlgorithm, 2,
 						int64(1), bytes.NewReader(body[chunksize:]),
 					),
 				}
 
-				s.mockSalter.EXPECT().
-					Salt().Return(salt)
-				s.mockEncKeyGen.EXPECT().
-					GenerateKey(salt).Return(encKey)
-				s.mockEncKeyGen.EXPECT().
-					String().Return(keyParams)
 				s.mockClient.EXPECT().
 					CreateMultipartUpload(ctx, createMultipartUploadInput).
 					Return(createMultipartUploadOutput, nil)
@@ -430,8 +347,6 @@ func (s *StoreTestSuite) TestUpload() {
 				store := store.New(
 					s.mockClient,
 					fs,
-					s.mockEncKeyGen,
-					s.mockSalter,
 					bucket,
 					store.WithChunkSize(chunksize),
 				)
@@ -450,21 +365,15 @@ func (s *StoreTestSuite) TestUpload() {
 
 				uploadPartInputs := []*s3.UploadPartInput{
 					newTestUploadPartInput(
-						inputFile, bucket, encKey, uploadID, checksumAlgorithm, 1,
+						inputFile, bucket, uploadID, checksumAlgorithm, 1,
 						chunksize, bytes.NewReader(body[:chunksize]),
 					),
 					newTestUploadPartInput(
-						inputFile, bucket, encKey, uploadID, checksumAlgorithm, 2,
+						inputFile, bucket, uploadID, checksumAlgorithm, 2,
 						int64(1), bytes.NewReader(body[chunksize:]),
 					),
 				}
 
-				s.mockSalter.EXPECT().
-					Salt().Return(salt)
-				s.mockEncKeyGen.EXPECT().
-					GenerateKey(salt).Return(encKey)
-				s.mockEncKeyGen.EXPECT().
-					String().Return(keyParams)
 				s.mockClient.EXPECT().
 					CreateMultipartUpload(ctx, createMultipartUploadInput).
 					Return(createMultipartUploadOutput, nil)
@@ -483,8 +392,6 @@ func (s *StoreTestSuite) TestUpload() {
 				store := store.New(
 					s.mockClient,
 					fs,
-					s.mockEncKeyGen,
-					s.mockSalter,
 					bucket,
 					store.WithChunkSize(chunksize),
 				)
@@ -505,7 +412,7 @@ func (s *StoreTestSuite) TestUpload() {
 				LocalPath: "doesnt/exist",
 			}
 
-			store := store.New(nil, fs, nil, nil, "")
+			store := store.New(nil, fs, "")
 
 			outputFile, err := store.Upload(ctx, inputFile)
 
@@ -518,14 +425,8 @@ func (s *StoreTestSuite) TestUpload() {
 			ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 
 			fs := &fakeFS{expectedErr}
-			s.mockSalter.EXPECT().
-				Salt().Return(salt)
-			s.mockEncKeyGen.EXPECT().
-				GenerateKey(salt).Return(encKey)
-			s.mockEncKeyGen.EXPECT().
-				String().Return(keyParams)
 
-			store := store.New(nil, fs, s.mockEncKeyGen, s.mockSalter, "")
+			store := store.New(nil, fs, "")
 
 			outputFile, err := store.Upload(ctx, inputFile)
 
@@ -535,7 +436,7 @@ func (s *StoreTestSuite) TestUpload() {
 	})
 
 	s.Run("returns error for invalid chunk size", func() {
-		store := store.New(nil, nil, nil, nil, "", store.WithChunkSize(0))
+		store := store.New(nil, nil, "", store.WithChunkSize(0))
 
 		outputFile, err := store.Upload(context.Background(), nil)
 

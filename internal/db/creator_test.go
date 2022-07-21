@@ -20,17 +20,14 @@ func TestCreatorTestSuite(t *testing.T) {
 
 func (s *CreatorTestSuite) TestCreate() {
 	row := &db.FileRow{
-		ID:                  "some-id",
-		Key:                 "some-key",
-		LocalPath:           "/some/path",
-		Checksum:            42,
-		Bucket:              "some-bucket",
-		ETag:                "some-etag",
-		Version:             "some-version",
-		Salt:                []byte{1, 2, 3},
-		EncryptionAlgorithm: db.EncryptionAlgorithmAES256,
-		KeyParams:           "{\"a\": 1}",
-		CreatedAtTimestamp:  time.Unix(1, 0).UTC(),
+		ID:                 "some-id",
+		Key:                "some-key",
+		LocalPath:          "/some/path",
+		Checksum:           42,
+		Bucket:             "some-bucket",
+		ETag:               "some-etag",
+		Version:            "some-version",
+		CreatedAtTimestamp: time.Unix(1, 0).UTC(),
 	}
 
 	s.Run("inserts provided row", func() {
@@ -51,12 +48,13 @@ func (s *CreatorTestSuite) TestCreate() {
 	})
 
 	s.Run("handles error from transaction", func() {
-		s.insertFileRow(row)
+		err := s.insertFileRow(row)
+		s.Require().NoError(err)
 
 		creator := db.NewGoquCreator()
 
 		var insertedRow *db.FileRow
-		err := s.inTransaction(func(tx *sql.Tx) error {
+		err = s.inTransaction(func(tx *sql.Tx) error {
 			var err error
 			insertedRow, err = creator.Create(context.Background(), tx, row)
 			if err != nil {

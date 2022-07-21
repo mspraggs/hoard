@@ -14,19 +14,6 @@ import (
 
 const defaultChunkSize = 10 * 1024 * 1024
 
-// Salter defines the interface required to generate a salt for use when
-// generating and encryption key.
-type Salter interface {
-	Salt() []byte
-}
-
-// EncryptionKeyGenerator defines the interface required to generate an
-// encryption key for the provided file upload.
-type EncryptionKeyGenerator interface {
-	GenerateKey(salt []byte) []byte
-	String() string
-}
-
 // Client is the interface required to interact with a storage backend.
 type Client interface {
 	PutObject(
@@ -62,20 +49,15 @@ type Store struct {
 	log       *zap.SugaredLogger
 	client    Client
 	fs        fs.FS
-	ekg       EncryptionKeyGenerator
-	salter    Salter
-	encAlg    EncryptionAlgorithm
 	csAlg     ChecksumAlgorithm
 	sc        StorageClass
 }
 
 // New instantiates a new file store with provided filesystem, uploader
-// selector, checksum algorithm and encryption key generator.
+// selector and checksum algorithm.
 func New(
 	client Client,
 	fs fs.FS,
-	ekg EncryptionKeyGenerator,
-	salter Salter,
 	bucket string,
 	opts ...Option,
 ) *Store {
@@ -83,12 +65,9 @@ func New(
 	store := &Store{
 		client:    client,
 		fs:        fs,
-		ekg:       ekg,
-		salter:    salter,
 		log:       util.MustNewLogger(),
 		bucket:    bucket,
 		chunksize: defaultChunkSize,
-		encAlg:    EncryptionAlgorithm(types.ServerSideEncryptionAes256),
 		csAlg:     types.ChecksumAlgorithmCrc32,
 		sc:        types.StorageClassStandard,
 	}
@@ -112,14 +91,6 @@ func WithChunkSize(chunksize int64) Option {
 func WithChecksumAlgorithm(algorithm ChecksumAlgorithm) Option {
 	return func(s *Store) {
 		s.csAlg = algorithm
-	}
-}
-
-// WithEncryptionAlgorithm returns a Option that sets the checksum algorithm
-// on the provided store.
-func WithEncryptionAlgorithm(algorithm EncryptionAlgorithm) Option {
-	return func(s *Store) {
-		s.encAlg = algorithm
 	}
 }
 

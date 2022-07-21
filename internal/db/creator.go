@@ -13,14 +13,11 @@ INSERT INTO files (
 	bucket,
 	etag,
 	version,
-	salt,
-	encryption_algorithm,
-	key_params,
 	created_at_timestamp
  ) VALUES (
-   $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+   $1, $2, $3, $4, $5, $6, $7, $8
  )
- RETURNING id, key, local_path, checksum, bucket, etag, version, salt, encryption_algorithm, key_params, created_at_timestamp
+ RETURNING id, key, local_path, checksum, bucket, etag, version, created_at_timestamp
 `
 
 // CreatorTx provides the logic to insert a file into a database within a
@@ -50,9 +47,6 @@ func (c *CreatorTx) Create(
 		file.Bucket,
 		file.ETag,
 		file.Version,
-		file.Salt,
-		file.EncryptionAlgorithm,
-		file.KeyParams,
 		file.CreatedAtTimestamp,
 	)
 	var insertedFile FileRow
@@ -64,9 +58,6 @@ func (c *CreatorTx) Create(
 		&insertedFile.Bucket,
 		&insertedFile.ETag,
 		&insertedFile.Version,
-		&insertedFile.Salt,
-		&insertedFile.EncryptionAlgorithm,
-		&insertedFile.KeyParams,
 		&insertedFile.CreatedAtTimestamp,
 	)
 	if err != nil {

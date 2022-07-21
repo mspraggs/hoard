@@ -3,8 +3,6 @@ package store_test
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/fs"
@@ -29,10 +27,8 @@ type contextKey string
 
 type StoreTestSuite struct {
 	suite.Suite
-	controller    *gomock.Controller
-	mockEncKeyGen *mocks.MockEncryptionKeyGenerator
-	mockSalter    *mocks.MockSalter
-	mockClient    *mocks.MockClient
+	controller *gomock.Controller
+	mockClient *mocks.MockClient
 }
 
 func TestStoreTestSuite(t *testing.T) {
@@ -41,13 +37,11 @@ func TestStoreTestSuite(t *testing.T) {
 
 func (s *StoreTestSuite) SetupTest() {
 	s.controller = gomock.NewController(s.T())
-	s.mockEncKeyGen = mocks.NewMockEncryptionKeyGenerator(s.controller)
-	s.mockSalter = mocks.NewMockSalter(s.controller)
 	s.mockClient = mocks.NewMockClient(s.controller)
 }
 
 func (s *StoreTestSuite) newStore(fs fs.FS, bucket string) *store.Store {
-	return store.New(s.mockClient, fs, s.mockEncKeyGen, s.mockSalter, bucket)
+	return store.New(s.mockClient, fs, bucket)
 }
 
 func (s *StoreTestSuite) makeDoUploadPart(
@@ -95,31 +89,22 @@ func newMemFS(files map[string][]byte) (*memfs.FS, error) {
 func newTestPutObjectInput(
 	file *processor.File,
 	bucket string,
-	encKey []byte,
 	csAlg types.ChecksumAlgorithm,
 	body io.Reader,
 ) *s3.PutObjectInput {
 
-	sseKey := base64.StdEncoding.EncodeToString(encKey)
-	hashedEncKey := md5.Sum(encKey)
-	sseKeyMD5 := base64.StdEncoding.EncodeToString(hashedEncKey[:])
-	sseAlg := string(types.ServerSideEncryptionAes256)
 	return &s3.PutObjectInput{
-		Key:                  &file.Key,
-		Bucket:               &bucket,
-		SSECustomerKey:       &sseKey,
-		SSECustomerKeyMD5:    &sseKeyMD5,
-		SSECustomerAlgorithm: &sseAlg,
-		ChecksumAlgorithm:    csAlg,
-		StorageClass:         types.StorageClassStandard,
-		Body:                 body,
+		Key:               &file.Key,
+		Bucket:            &bucket,
+		ChecksumAlgorithm: csAlg,
+		StorageClass:      types.StorageClassStandard,
+		Body:              body,
 	}
 }
 
 func newTestUploadPartInput(
 	file *processor.File,
 	bucket string,
-	encKey []byte,
 	uploadID string,
 	csAlg types.ChecksumAlgorithm,
 	chunkNum int32,
@@ -127,21 +112,14 @@ func newTestUploadPartInput(
 	body io.Reader,
 ) *s3.UploadPartInput {
 
-	sseKey := base64.StdEncoding.EncodeToString(encKey)
-	hashedEncKey := md5.Sum(encKey)
-	sseKeyMD5 := base64.StdEncoding.EncodeToString(hashedEncKey[:])
-	sseAlg := string(types.ServerSideEncryptionAes256)
 	return &s3.UploadPartInput{
-		Key:                  &file.Key,
-		UploadId:             &uploadID,
-		Bucket:               &bucket,
-		PartNumber:           chunkNum,
-		ContentLength:        chunkSize,
-		SSECustomerKey:       &sseKey,
-		SSECustomerKeyMD5:    &sseKeyMD5,
-		SSECustomerAlgorithm: &sseAlg,
-		ChecksumAlgorithm:    csAlg,
-		Body:                 body,
+		Key:               &file.Key,
+		UploadId:          &uploadID,
+		Bucket:            &bucket,
+		PartNumber:        chunkNum,
+		ContentLength:     chunkSize,
+		ChecksumAlgorithm: csAlg,
+		Body:              body,
 	}
 }
 

@@ -2,7 +2,7 @@ num_threads: 4
 lock_file: /var/run/lock/hoard.pid
 logging:
   level: DEBUG
-  # file_path: hoard.log
+  file_path: hoard.log
 registry:
   bucket: my-bucket-name
   path: data.db
@@ -13,6 +13,5 @@ uploads:
   checksum_algorithm: CRC32
 directories:
   - bucket: my-bucket-name
-    path: /tmp/tmp.aWDqb3UpqC
-    encryption_algorithm: AES256
+    path: /path/to/directory
     storage_class: STANDARD

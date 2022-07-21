@@ -21,12 +21,9 @@ INSERT INTO files (
 	bucket,
 	etag,
 	version,
-	salt,
-	encryption_algorithm,
-	key_params,
 	created_at_timestamp
 ) VALUES (
-	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+	$1, $2, $3, $4, $5, $6, $7, $8
 );
 `
 
@@ -74,9 +71,6 @@ func (s *dbTestSuite) insertFileRow(row *db.FileRow) error {
 		row.Bucket,
 		row.ETag,
 		row.Version,
-		row.Salt,
-		row.EncryptionAlgorithm,
-		row.KeyParams,
 		row.CreatedAtTimestamp,
 	)
 	return err

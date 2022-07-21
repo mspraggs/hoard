@@ -24,11 +24,8 @@ func (s *Store) Upload(ctx context.Context, file *processor.File) (*processor.Fi
 		return nil, err
 	}
 
-	file.EncryptionAlgorithm = s.encAlg.ToDomain()
 	file.Bucket = s.bucket
-	file.Salt = s.salter.Salt()
-	file.KeyParams = s.ekg.String()
-	storeFile := NewFileFromDomain(file, s.ekg.GenerateKey(file.Salt), s.csAlg, s.sc, f)
+	storeFile := NewFileFromDomain(file, s.csAlg, s.sc, f)
 
 	eTag, version, err := s.upload(ctx, storeFile)
 	if err != nil {

@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -22,8 +21,7 @@ import (
 // Backup provides the logic to run Hoard's backup functionality.
 type Backup struct {
 	Command
-	ConfigPath       string `required:"true" short:"c" long:"config" description:"The path to the YAML configuration required by hoard"`
-	EncryptionSecret string `required:"true" short:"s" long:"secret" env:"HOARD_ENCRYPTION_SECRET" description:"The encryption secret to use when generating encryption keys"`
+	ConfigPath string `required:"true" short:"c" long:"config" description:"The path to the YAML configuration required by hoard"`
 }
 
 // NewBackup instantiates an instance of the Backup command.
@@ -34,15 +32,15 @@ func NewBackup() *Backup {
 // Execute implements the go-flags Commander interface for the backup command,
 // which uses the supplied configuration YAML to back up a set of directories to
 // a storage backend.
-func (c *Backup) Execute(args []string) error {
-	config, err := parseConfig(c.ConfigPath)
+func (b *Backup) Execute(args []string) error {
+	config, err := parseConfig(b.ConfigPath)
 	if err != nil {
 		return err
 	}
 
-	c.configureLogging(&config.Logging)
+	b.configureLogging(&config.Logging)
 
-	unlock, err := c.tryLockPID(config.Lockfile)
+	unlock, err := b.tryLockPID(config.Lockfile)
 	if err != nil {
 		return err
 	}
@@ -59,15 +57,15 @@ func (c *Backup) Execute(args []string) error {
 	}
 	d.SetMaxOpenConns(1)
 
-	err = c.uploadFiles(config, d, client)
+	err = b.uploadFiles(config, d, client)
 	if err != nil {
 		return err
 	}
 
-	return c.storeRegistry(config.Registry, client)
+	return b.storeRegistry(config.Registry, client)
 }
 
-func (c *Backup) uploadFiles(config *config.Config, d *sql.DB, client *s3.Client) error {
+func (b *Backup) uploadFiles(config *config.Config, d *sql.DB, client *s3.Client) error {
 	defer d.Close()
 
 	inTxner := newTransactioner(d)
@@ -79,36 +77,58 @@ func (c *Backup) uploadFiles(config *config.Config, d *sql.DB, client *s3.Client
 			inTxner,
 			client,
 			config,
-			c.EncryptionSecret,
 		); err != nil {
-			c.log.Warnw("Unable to process directory", "error", err)
+			b.log.Warnw("Unable to process directory", "error", err)
 		}
 	}
 
 	return nil
 }
 
-func (c *Backup) storeRegistry(cfg config.RegConfig, client *s3.Client) error {
-	c.log.Infow("Storing registry", "bucket", cfg.Bucket)
+func (b *Backup) storeRegistry(cfg config.RegConfig, client *s3.Client) error {
+	b.log.Infow("Storing registry", "bucket", cfg.Bucket)
 
-	f, err := os.Open(cfg.Path)
+	if err := b.uploadFile(cfg.Path, cfg.Bucket, client); err != nil {
+		b.log.Warnw("Failed to store salt record", "error", err)
+		return err
+	}
+
+	if err := b.uploadFile(
+		cfg.Path,
+		cfg.Bucket,
+		client,
+	); err != nil {
+		b.log.Warnw("Failed to store registry", "error", err)
+		return err
+	}
+	return nil
+}
+
+func (b *Backup) uploadFile(
+	path,
+	bucket string,
+	client *s3.Client,
+) error {
+
+	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	key := filepath.Base(cfg.Path)
+	key := filepath.Base(path)
 	req := &s3.PutObjectInput{
-		Bucket: &cfg.Bucket,
+		Bucket: &bucket,
 		Key:    &key,
 		Body:   f,
 	}
 
 	_, err = client.PutObject(context.Background(), req)
 	if err != nil {
-		c.log.Warnw("Failed to store registry", "error", err)
+		b.log.Warnw("Failed to store registry", "error", err)
+		return err
 	}
-	return err
+	return nil
 }
 
 func processDirectory(
@@ -117,7 +137,6 @@ func processDirectory(
 	inTxner db.InTransactioner,
 	client *s3.Client,
 	config *config.Config,
-	secret string,
 ) error {
 
 	fs := os.DirFS(dir.Path)
@@ -133,14 +152,9 @@ func processDirectory(
 	store := store.New(
 		client,
 		fs,
-		util.NewEncryptionKeyGenerator(
-			[]byte(secret), dir.EncryptionAlgorithm.ToInternal().KeyLen(),
-		),
-		rng{},
 		dir.Bucket,
 		store.WithChecksumAlgorithm(uploads.ChecksumAlgorithm.ToInternal()),
 		store.WithChunkSize(uploads.MultiUploadThreshold),
-		store.WithEncryptionAlgorithm(dir.EncryptionAlgorithm.ToInternal()),
 		store.WithStorageClass(dir.StorageClass.ToInternal()),
 	)
 
@@ -159,10 +173,4 @@ func (g rng) GenerateID() string {
 
 func (g rng) GenerateKey() string {
 	return g.GenerateID()
-}
-
-func (g rng) Salt() []byte {
-	salt := make([]byte, 64)
-	rand.Read(salt)
-	return salt
 }

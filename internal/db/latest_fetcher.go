@@ -14,9 +14,6 @@ SELECT
 	bucket,
 	etag,
 	version,
-	salt,
-	encryption_algorithm,
-	key_params,
 	created_at_timestamp
 FROM files
 WHERE local_path = $1
@@ -51,9 +48,6 @@ func (lf *GoquLatestFetcher) FetchLatest(
 		&selectedFile.Bucket,
 		&selectedFile.ETag,
 		&selectedFile.Version,
-		&selectedFile.Salt,
-		&selectedFile.EncryptionAlgorithm,
-		&selectedFile.KeyParams,
 		&selectedFile.CreatedAtTimestamp,
 	); err != nil {
 		if err == sql.ErrNoRows {
