@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -24,11 +25,17 @@ func (s *InTransactionerTestSuite) TestInTransaction() {
 	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 
 	s.Run("calls transaction function and returns result from DB", func() {
+		d, mock, err := sqlmock.New()
+		s.Require().NoError(err)
+
+		mock.ExpectBegin()
+		mock.ExpectCommit()
+
 		txnFn := &txnFuncer{req: s.Require()}
 
-		inTxner := db.NewInTransactioner(s.db)
+		inTxner := db.NewInTransactioner(d)
 
-		err := inTxner.InTransaction(ctx, txnFn.call)
+		err = inTxner.InTransaction(ctx, txnFn.call)
 
 		s.Require().NoError(err)
 		s.Require().Equal(1, txnFn.callCount)
@@ -37,25 +44,36 @@ func (s *InTransactionerTestSuite) TestInTransaction() {
 	s.Run("returns error from transaction function", func() {
 		expectedErr := errors.New("oh no")
 
+		d, mock, err := sqlmock.New()
+		s.Require().NoError(err)
+
+		mock.ExpectBegin()
+		mock.ExpectRollback()
+
 		txnFn := &txnFuncer{req: s.Require(), err: expectedErr}
 
-		inTxner := db.NewInTransactioner(s.db)
+		inTxner := db.NewInTransactioner(d)
 
-		err := inTxner.InTransaction(ctx, txnFn.call)
+		err = inTxner.InTransaction(ctx, txnFn.call)
 
 		s.ErrorIs(err, expectedErr)
 		s.Require().Equal(1, txnFn.callCount)
 	})
 
 	s.Run("returns error on begin transaction failure", func() {
-		inTxner := db.NewInTransactioner(s.db)
+		expectedErr := errors.New("oh no")
 
-		s.db.Close()
-		defer s.SetupSuite()
+		d, mock, err := sqlmock.New()
+		s.Require().NoError(err)
 
-		err := inTxner.InTransaction(context.Background(), nil)
+		mock.ExpectBegin().WillReturnError(expectedErr)
+		mock.ExpectCommit()
 
-		s.ErrorContains(err, "database is closed")
+		inTxner := db.NewInTransactioner(d)
+
+		err = inTxner.InTransaction(context.Background(), nil)
+
+		s.ErrorIs(err, expectedErr)
 	})
 }
 

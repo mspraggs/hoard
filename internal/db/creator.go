@@ -5,7 +5,7 @@ import (
 )
 
 const createFile = `-- name: CreateFile :one
-INSERT INTO files (
+INSERT INTO files.files (
 	id,
 	key,
 	local_path,
@@ -24,8 +24,8 @@ INSERT INTO files (
 // transaction.
 type CreatorTx struct{}
 
-// NewGoquCreator instantiates a new CreatorTx instance.
-func NewGoquCreator() *CreatorTx {
+// NewPostgresCreator instantiates a new CreatorTx instance.
+func NewPostgresCreator() *CreatorTx {
 	return &CreatorTx{}
 }
 

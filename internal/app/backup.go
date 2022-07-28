@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"os"
-	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 
 	"github.com/mspraggs/hoard/internal/config"
 	"github.com/mspraggs/hoard/internal/db"
@@ -51,7 +50,7 @@ func (b *Backup) Execute(args []string) error {
 		return err
 	}
 
-	d, err := sql.Open("sqlite3", config.Registry.Path)
+	d, err := sql.Open("postgres", config.Registry.Location)
 	if err != nil {
 		return err
 	}
@@ -62,7 +61,7 @@ func (b *Backup) Execute(args []string) error {
 		return err
 	}
 
-	return b.storeRegistry(config.Registry, client)
+	return nil
 }
 
 func (b *Backup) uploadFiles(config *config.Config, d *sql.DB, client *s3.Client) error {
@@ -85,52 +84,6 @@ func (b *Backup) uploadFiles(config *config.Config, d *sql.DB, client *s3.Client
 	return nil
 }
 
-func (b *Backup) storeRegistry(cfg config.RegConfig, client *s3.Client) error {
-	b.log.Infow("Storing registry", "bucket", cfg.Bucket)
-
-	if err := b.uploadFile(cfg.Path, cfg.Bucket, client); err != nil {
-		b.log.Warnw("Failed to store salt record", "error", err)
-		return err
-	}
-
-	if err := b.uploadFile(
-		cfg.Path,
-		cfg.Bucket,
-		client,
-	); err != nil {
-		b.log.Warnw("Failed to store registry", "error", err)
-		return err
-	}
-	return nil
-}
-
-func (b *Backup) uploadFile(
-	path,
-	bucket string,
-	client *s3.Client,
-) error {
-
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	key := filepath.Base(path)
-	req := &s3.PutObjectInput{
-		Bucket: &bucket,
-		Key:    &key,
-		Body:   f,
-	}
-
-	_, err = client.PutObject(context.Background(), req)
-	if err != nil {
-		b.log.Warnw("Failed to store registry", "error", err)
-		return err
-	}
-	return nil
-}
-
 func processDirectory(
 	uploads config.UploadConfig,
 	dir config.DirConfig,
@@ -144,8 +97,8 @@ func processDirectory(
 	registry := db.NewRegistry(
 		&util.Clock{},
 		inTxner,
-		db.NewGoquCreator(),
-		db.NewGoquLatestFetcher(),
+		db.NewPostgresCreator(),
+		db.NewPostgresLatestFetcher(),
 		rng{},
 	)
 

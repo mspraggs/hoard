@@ -1,8 +1,6 @@
 package store
 
 import (
-	"crypto/md5"
-	"encoding/base64"
 	"io"
 	"io/fs"
 
@@ -159,9 +157,4 @@ func (f *File) Size() (int64, error) {
 	}
 
 	return info.Size(), nil
-}
-
-func md5Hash(input []byte) string {
-	hash := md5.Sum(input)
-	return base64.StdEncoding.EncodeToString(hash[:])
 }

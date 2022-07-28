@@ -15,7 +15,7 @@ SELECT
 	etag,
 	version,
 	created_at_timestamp
-FROM files
+FROM files.files
 WHERE local_path = $1
 ORDER BY created_at_timestamp DESC
 LIMIT 1
@@ -25,8 +25,8 @@ LIMIT 1
 // file with a given path within a transaction.
 type GoquLatestFetcher struct{}
 
-// NewGoquLatestFetcher instantiates a new GoLatestFetcher instance.
-func NewGoquLatestFetcher() *GoquLatestFetcher {
+// NewPostgresLatestFetcher instantiates a new GoLatestFetcher instance.
+func NewPostgresLatestFetcher() *GoquLatestFetcher {
 	return &GoquLatestFetcher{}
 }
 

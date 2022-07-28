@@ -67,9 +67,7 @@ type LogConfig struct {
 
 // RegConfig contains all configuration relating to the file registry.
 type RegConfig struct {
-	Bucket      string `yaml:"bucket"`
-	Path        string `yaml:"path"`
-	SaltsRecord string `yaml:"salts_record"`
+	Location string `yaml:"location"`
 }
 
 // StoreConfig contains all configuration relating to the file store.

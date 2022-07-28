@@ -6,9 +6,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/mspraggs/hoard/internal/db"
 	"github.com/stretchr/testify/suite"
 )
+
+var insertRows = []string{
+	"id",
+	"key",
+	"local_path",
+	"checksum",
+	"bucket",
+	"etag",
+	"version",
+	"created_at_timestamp",
+}
 
 type CreatorTestSuite struct {
 	dbTestSuite
@@ -31,10 +43,21 @@ func (s *CreatorTestSuite) TestCreate() {
 	}
 
 	s.Run("inserts provided row", func() {
-		creator := db.NewGoquCreator()
+		d, mock, err := sqlmock.New()
+		s.Require().NoError(err)
+		defer d.Close()
+
+		rows := sqlmock.NewRows(insertRows)
+		addFileRowsToRows(rows, row)
+
+		mock.ExpectBegin()
+		mock.ExpectQuery("INSERT INTO files.files").WillReturnRows(rows)
+		mock.ExpectCommit()
+
+		creator := db.NewPostgresCreator()
 
 		var insertedRow *db.FileRow
-		err := s.inTransaction(func(tx *sql.Tx) error {
+		err = s.inTransaction(d, func(tx *sql.Tx) error {
 			var err error
 			insertedRow, err = creator.Create(context.Background(), tx, row)
 			if err != nil {
@@ -48,13 +71,20 @@ func (s *CreatorTestSuite) TestCreate() {
 	})
 
 	s.Run("handles error from transaction", func() {
-		err := s.insertFileRow(row)
+		d, mock, err := sqlmock.New()
 		s.Require().NoError(err)
+		defer d.Close()
 
-		creator := db.NewGoquCreator()
+		rows := sqlmock.NewRows(insertRows)
+
+		mock.ExpectBegin()
+		mock.ExpectQuery("INSERT INTO files.files").WillReturnRows(rows)
+		mock.ExpectCommit()
+
+		creator := db.NewPostgresCreator()
 
 		var insertedRow *db.FileRow
-		err = s.inTransaction(func(tx *sql.Tx) error {
+		err = s.inTransaction(d, func(tx *sql.Tx) error {
 			var err error
 			insertedRow, err = creator.Create(context.Background(), tx, row)
 			if err != nil {
@@ -63,7 +93,7 @@ func (s *CreatorTestSuite) TestCreate() {
 			return nil
 		})
 
-		s.ErrorContains(err, "constraint failed")
+		s.ErrorIs(err, sql.ErrNoRows)
 		s.Nil(insertedRow)
 	})
 }

@@ -3,12 +3,30 @@ package db_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/mspraggs/hoard/internal/db"
 	"github.com/stretchr/testify/suite"
 )
+
+const selectQuery = `
+SELECT
+	id,
+	key,
+	local_path,
+	checksum,
+	bucket,
+	etag,
+	version,
+	created_at_timestamp
+FROM files.files
+WHERE local_path = \$1
+ORDER BY created_at_timestamp DESC
+LIMIT 1
+`
 
 type LatestFetcherTestSuite struct {
 	dbTestSuite
@@ -21,7 +39,7 @@ func TestLatestFetcherTestSuite(t *testing.T) {
 func (s *LatestFetcherTestSuite) TestCreate() {
 	path := "/some/path"
 
-	rows := []*db.FileRow{
+	fileRows := []*db.FileRow{
 		{
 			ID:                 "some-id",
 			Key:                "some-key",
@@ -45,13 +63,21 @@ func (s *LatestFetcherTestSuite) TestCreate() {
 	}
 
 	s.Run("returns latest row", func() {
-		s.insertFileRow(rows[0])
-		s.insertFileRow(rows[1])
+		d, mock, err := sqlmock.New()
+		s.Require().NoError(err)
+		defer d.Close()
 
-		latestFetcher := db.NewGoquLatestFetcher()
+		rows := sqlmock.NewRows(insertRows)
+		addFileRowsToRows(rows, fileRows[1])
+
+		mock.ExpectBegin()
+		mock.ExpectQuery(selectQuery).WithArgs(path).WillReturnRows(rows)
+		mock.ExpectCommit()
+
+		latestFetcher := db.NewPostgresLatestFetcher()
 
 		var fetchedRow *db.FileRow
-		err := s.inTransaction(func(tx *sql.Tx) error {
+		err = s.inTransaction(d, func(tx *sql.Tx) error {
 			var err error
 			fetchedRow, err = latestFetcher.FetchLatest(context.Background(), tx, path)
 			if err != nil {
@@ -61,17 +87,26 @@ func (s *LatestFetcherTestSuite) TestCreate() {
 		})
 
 		s.Require().NoError(err)
-		s.Equal(rows[1], fetchedRow)
+		s.Equal(fileRows[1], fetchedRow)
 	})
 
 	s.Run("returns nil when no matching rows", func() {
 		missingPath := "/path/not/found"
-		s.insertFileRow(rows[0])
-		s.insertFileRow(rows[1])
-		latestFetcher := db.NewGoquLatestFetcher()
+
+		d, mock, err := sqlmock.New()
+		s.Require().NoError(err)
+		defer d.Close()
+
+		rows := sqlmock.NewRows(insertRows)
+
+		mock.ExpectBegin()
+		mock.ExpectQuery(selectQuery).WithArgs(missingPath).WillReturnRows(rows)
+		mock.ExpectCommit()
+
+		latestFetcher := db.NewPostgresLatestFetcher()
 
 		var fetchedRow *db.FileRow
-		err := s.inTransaction(func(tx *sql.Tx) error {
+		err = s.inTransaction(d, func(tx *sql.Tx) error {
 			var err error
 			fetchedRow, err = latestFetcher.FetchLatest(context.Background(), tx, missingPath)
 			if err != nil {
@@ -81,6 +116,33 @@ func (s *LatestFetcherTestSuite) TestCreate() {
 		})
 
 		s.Require().NoError(err)
+		s.Nil(fetchedRow)
+	})
+
+	s.Run("returns error from scanned row", func() {
+		expectedErr := errors.New("fail")
+
+		d, mock, err := sqlmock.New()
+		s.Require().NoError(err)
+		defer d.Close()
+
+		mock.ExpectBegin()
+		mock.ExpectQuery(selectQuery).WithArgs(path).WillReturnError(expectedErr)
+		mock.ExpectRollback()
+
+		latestFetcher := db.NewPostgresLatestFetcher()
+
+		var fetchedRow *db.FileRow
+		err = s.inTransaction(d, func(tx *sql.Tx) error {
+			var err error
+			fetchedRow, err = latestFetcher.FetchLatest(context.Background(), tx, path)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+
+		s.ErrorIs(err, expectedErr)
 		s.Nil(fetchedRow)
 	})
 }

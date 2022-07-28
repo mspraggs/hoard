@@ -1,1 +1,3 @@
-DROP TABLE files;
+DROP TABLE files.files;
+
+DROP SCHEMA files;

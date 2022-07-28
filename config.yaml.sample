@@ -4,8 +4,7 @@ logging:
   level: DEBUG
   file_path: hoard.log
 registry:
-  bucket: my-bucket-name
-  path: data.db
+  location: postgres://db_user:db_pass@db-host:5432/some_db
 store:
   region: aws-region
 uploads:
