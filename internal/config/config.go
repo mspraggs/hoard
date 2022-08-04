@@ -70,9 +70,21 @@ type RegConfig struct {
 	Location string `yaml:"location"`
 }
 
+// StoreCredentials contains the credentials required to authenticate with the
+// file store.
+type StoreCredentials struct {
+	ID     string `yaml:"id"`
+	Secret string `yaml:"secret"`
+	Token  string `yaml:"token"`
+}
+
 // StoreConfig contains all configuration relating to the file store.
 type StoreConfig struct {
-	Region string `yaml:"region"`
+	Region           string            `yaml:"region"`
+	Endpoint         string            `yaml:"endpoint"`
+	UsePathStyle     bool              `yaml:"use_path_style"`
+	DisableTLSChecks bool              `yaml:"disable_tls_checks"`
+	Credentials      *StoreCredentials `yaml:"credentials"`
 }
 
 // UploadConfig contains all configuration common to all file uploads.

@@ -94,7 +94,9 @@ func (s *DirScanner) uploadFileUploads(ctx context.Context) {
 			for _, p := range s.processors {
 				file, err := p.Process(ctx, path)
 				if err != nil {
-					s.log.Warnw("Error processing file", "error", err, "file", file)
+					s.log.Warnw("Error processing file", "error", err, "path", path)
+				} else {
+					s.log.Infow("Successfully processed file", "file", file)
 				}
 			}
 		case <-ctx.Done():

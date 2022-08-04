@@ -24,17 +24,26 @@ type Backup struct {
 }
 
 // NewBackup instantiates an instance of the Backup command.
-func NewBackup() *Backup {
-	return &Backup{}
+func NewBackup(opts ...CommandOption) *Backup {
+	b := &Backup{}
+
+	for _, opt := range opts {
+		opt(&b.Command)
+	}
+
+	return b
 }
 
 // Execute implements the go-flags Commander interface for the backup command,
 // which uses the supplied configuration YAML to back up a set of directories to
 // a storage backend.
 func (b *Backup) Execute(args []string) error {
-	config, err := parseConfig(b.ConfigPath)
-	if err != nil {
-		return err
+	config := b.config
+	if config == nil {
+		var err error
+		if config, err = parseConfig(b.ConfigPath); err != nil {
+			return err
+		}
 	}
 
 	b.configureLogging(&config.Logging)
@@ -45,7 +54,7 @@ func (b *Backup) Execute(args []string) error {
 	}
 	defer unlock()
 
-	client, err := newClient(config)
+	client, err := newClient(&config.Store)
 	if err != nil {
 		return err
 	}
@@ -54,7 +63,6 @@ func (b *Backup) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	d.SetMaxOpenConns(1)
 
 	err = b.uploadFiles(config, d, client)
 	if err != nil {

@@ -109,7 +109,7 @@ func (s *Store) multipartUpload(
 		)
 		uploadOutput, err := s.uploadPart(ctx, uploadID, partNum, size, file)
 		if err != nil {
-			return "", "", fmt.Errorf("unable to file part: %w", err)
+			return "", "", fmt.Errorf("unable to upload file part: %w", err)
 		}
 		s.log.Debugw(
 			"Upload part finish",
@@ -155,7 +155,7 @@ func (s *Store) uploadPart(
 
 	output, err := s.client.UploadPart(ctx, (*s3.UploadPartInput)(input))
 	if err != nil {
-		return nil, fmt.Errorf("unable to file multipart part: %w", err)
+		return nil, fmt.Errorf("unable to upload file multipart part: %w", err)
 	}
 
 	return (*UploadPartOutput)(output), nil
@@ -172,7 +172,7 @@ func (s *Store) closeMultiPartUpload(
 
 	output, err := s.client.CompleteMultipartUpload(ctx, (*s3.CompleteMultipartUploadInput)(input))
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("unable to complete multipart file upload: %w", err)
 	}
 
 	version := ""
