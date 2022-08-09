@@ -5,6 +5,7 @@ CREATE TABLE files.files (
     key                   TEXT NOT NULL,
     local_path            TEXT NOT NULL,
     checksum              BIGINT NOT NULL,
+    change_time           TIMESTAMPTZ NOT NULL,
     etag                  TEXT NOT NULL,
     bucket                TEXT NOT NULL,
     version               TEXT NOT NULL,

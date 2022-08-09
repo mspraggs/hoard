@@ -18,6 +18,7 @@ SELECT
 	key,
 	local_path,
 	checksum,
+	change_time,
 	bucket,
 	etag,
 	version,
@@ -74,7 +75,7 @@ func (s *LatestFetcherTestSuite) TestCreate() {
 		mock.ExpectQuery(selectQuery).WithArgs(path).WillReturnRows(rows)
 		mock.ExpectCommit()
 
-		latestFetcher := db.NewPostgresLatestFetcher()
+		latestFetcher := db.NewLatestFetcherTx()
 
 		var fetchedRow *db.FileRow
 		err = s.inTransaction(d, func(tx *sql.Tx) error {
@@ -103,7 +104,7 @@ func (s *LatestFetcherTestSuite) TestCreate() {
 		mock.ExpectQuery(selectQuery).WithArgs(missingPath).WillReturnRows(rows)
 		mock.ExpectCommit()
 
-		latestFetcher := db.NewPostgresLatestFetcher()
+		latestFetcher := db.NewLatestFetcherTx()
 
 		var fetchedRow *db.FileRow
 		err = s.inTransaction(d, func(tx *sql.Tx) error {
@@ -130,7 +131,7 @@ func (s *LatestFetcherTestSuite) TestCreate() {
 		mock.ExpectQuery(selectQuery).WithArgs(path).WillReturnError(expectedErr)
 		mock.ExpectRollback()
 
-		latestFetcher := db.NewPostgresLatestFetcher()
+		latestFetcher := db.NewLatestFetcherTx()
 
 		var fetchedRow *db.FileRow
 		err = s.inTransaction(d, func(tx *sql.Tx) error {

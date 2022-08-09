@@ -10,22 +10,23 @@ INSERT INTO files.files (
 	key,
 	local_path,
 	checksum,
+	change_time,
 	bucket,
 	etag,
 	version,
 	created_at_timestamp
- ) VALUES (
-   $1, $2, $3, $4, $5, $6, $7, $8
- )
- RETURNING id, key, local_path, checksum, bucket, etag, version, created_at_timestamp
+) VALUES (
+	$1, $2, $3, $4, $5, $6, $7, $8, $9
+)
+RETURNING id, key, local_path, checksum, change_time, bucket, etag, version, created_at_timestamp
 `
 
 // CreatorTx provides the logic to insert a file into a database within a
 // transaction.
 type CreatorTx struct{}
 
-// NewPostgresCreator instantiates a new CreatorTx instance.
-func NewPostgresCreator() *CreatorTx {
+// NewCreatorTx instantiates a new CreatorTx instance.
+func NewCreatorTx() *CreatorTx {
 	return &CreatorTx{}
 }
 
@@ -44,6 +45,7 @@ func (c *CreatorTx) Create(
 		file.Key,
 		file.LocalPath,
 		file.Checksum,
+		file.CTime,
 		file.Bucket,
 		file.ETag,
 		file.Version,
@@ -55,6 +57,7 @@ func (c *CreatorTx) Create(
 		&insertedFile.Key,
 		&insertedFile.LocalPath,
 		&insertedFile.Checksum,
+		&insertedFile.CTime,
 		&insertedFile.Bucket,
 		&insertedFile.ETag,
 		&insertedFile.Version,

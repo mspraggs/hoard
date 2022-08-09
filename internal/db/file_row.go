@@ -15,6 +15,7 @@ type FileRow struct {
 	Key                string    `db:"key"`
 	LocalPath          string    `db:"local_path"`
 	Checksum           Checksum  `db:"checksum"`
+	CTime              time.Time `db:"change_time"`
 	Bucket             string    `db:"bucket"`
 	ETag               string    `db:"etag"`
 	Version            string    `db:"version"`
@@ -26,6 +27,7 @@ func (r *FileRow) toDomain() *processor.File {
 		Key:       r.Key,
 		LocalPath: r.LocalPath,
 		Checksum:  r.Checksum.toDomain(),
+		CTime:     r.CTime,
 		Bucket:    r.Bucket,
 		ETag:      r.ETag,
 		Version:   r.Version,
@@ -38,7 +40,10 @@ func newFileRowFromDomain(id string, file *processor.File) *FileRow {
 		Key:       file.Key,
 		LocalPath: file.LocalPath,
 		Checksum:  newChecksumFromDomain(file.Checksum),
+		CTime:     file.CTime,
 		Bucket:    file.Bucket,
+		ETag:      file.ETag,
+		Version:   file.Version,
 	}
 }
 

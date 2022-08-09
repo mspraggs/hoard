@@ -34,6 +34,7 @@ func addFileRowsToRows(rows *sqlmock.Rows, fileRows ...*db.FileRow) {
 			row.Key,
 			row.LocalPath,
 			row.Checksum,
+			row.CTime,
 			row.Bucket,
 			row.ETag,
 			row.Version,

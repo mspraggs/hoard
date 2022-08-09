@@ -11,11 +11,29 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const insertQuery = `
+INSERT INTO files.files \(
+	id,
+	key,
+	local_path,
+	checksum,
+	change_time,
+	bucket,
+	etag,
+	version,
+	created_at_timestamp
+\) VALUES \(
+	\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9
+\)
+RETURNING id, key, local_path, checksum, change_time, bucket, etag, version, created_at_timestamp
+`
+
 var insertRows = []string{
 	"id",
 	"key",
 	"local_path",
 	"checksum",
+	"change_time",
 	"bucket",
 	"etag",
 	"version",
@@ -36,6 +54,7 @@ func (s *CreatorTestSuite) TestCreate() {
 		Key:                "some-key",
 		LocalPath:          "/some/path",
 		Checksum:           42,
+		CTime:              time.Unix(123, 456).UTC(),
 		Bucket:             "some-bucket",
 		ETag:               "some-etag",
 		Version:            "some-version",
@@ -51,10 +70,10 @@ func (s *CreatorTestSuite) TestCreate() {
 		addFileRowsToRows(rows, row)
 
 		mock.ExpectBegin()
-		mock.ExpectQuery("INSERT INTO files.files").WillReturnRows(rows)
+		mock.ExpectQuery(insertQuery).WillReturnRows(rows)
 		mock.ExpectCommit()
 
-		creator := db.NewPostgresCreator()
+		creator := db.NewCreatorTx()
 
 		var insertedRow *db.FileRow
 		err = s.inTransaction(d, func(tx *sql.Tx) error {
@@ -78,10 +97,10 @@ func (s *CreatorTestSuite) TestCreate() {
 		rows := sqlmock.NewRows(insertRows)
 
 		mock.ExpectBegin()
-		mock.ExpectQuery("INSERT INTO files.files").WillReturnRows(rows)
+		mock.ExpectQuery(insertQuery).WillReturnRows(rows)
 		mock.ExpectCommit()
 
-		creator := db.NewPostgresCreator()
+		creator := db.NewCreatorTx()
 
 		var insertedRow *db.FileRow
 		err = s.inTransaction(d, func(tx *sql.Tx) error {

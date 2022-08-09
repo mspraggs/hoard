@@ -105,8 +105,8 @@ func processDirectory(
 	registry := db.NewRegistry(
 		&util.Clock{},
 		inTxner,
-		db.NewPostgresCreator(),
-		db.NewPostgresLatestFetcher(),
+		db.NewCreatorTx(),
+		db.NewLatestFetcherTx(),
 		rng{},
 	)
 
@@ -119,9 +119,9 @@ func processDirectory(
 		store.WithStorageClass(dir.StorageClass.ToInternal()),
 	)
 
-	handler := processor.New(fs, rng{}, store, registry)
+	processor := processor.New(fs, store, registry)
 
-	scanner := dirscanner.New(fs, []dirscanner.Processor{handler}, config.NumThreads)
+	scanner := dirscanner.New(fs, []dirscanner.Processor{processor}, config.NumThreads)
 
 	return scanner.Scan(context.Background())
 }
@@ -130,8 +130,4 @@ type rng struct{}
 
 func (g rng) GenerateID() string {
 	return uuid.NewString()
-}
-
-func (g rng) GenerateKey() string {
-	return g.GenerateID()
 }

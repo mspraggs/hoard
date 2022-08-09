@@ -11,6 +11,7 @@ SELECT
 	key,
 	local_path,
 	checksum,
+	change_time,
 	bucket,
 	etag,
 	version,
@@ -21,17 +22,17 @@ ORDER BY created_at_timestamp DESC
 LIMIT 1
 `
 
-// GoquLatestFetcher provides the logic to fetch the most recent version of a
+// LatestFetcherTx provides the logic to fetch the most recent version of a
 // file with a given path within a transaction.
-type GoquLatestFetcher struct{}
+type LatestFetcherTx struct{}
 
-// NewPostgresLatestFetcher instantiates a new GoLatestFetcher instance.
-func NewPostgresLatestFetcher() *GoquLatestFetcher {
-	return &GoquLatestFetcher{}
+// NewLatestFetcherTx instantiates a new GoLatestFetcher instance.
+func NewLatestFetcherTx() *LatestFetcherTx {
+	return &LatestFetcherTx{}
 }
 
 // FetchLatest returns the most recent version of a file with the provided path.
-func (lf *GoquLatestFetcher) FetchLatest(
+func (lf *LatestFetcherTx) FetchLatest(
 	ctx context.Context,
 	tx Tx,
 	path string,
@@ -45,6 +46,7 @@ func (lf *GoquLatestFetcher) FetchLatest(
 		&selectedFile.Key,
 		&selectedFile.LocalPath,
 		&selectedFile.Checksum,
+		&selectedFile.CTime,
 		&selectedFile.Bucket,
 		&selectedFile.ETag,
 		&selectedFile.Version,
