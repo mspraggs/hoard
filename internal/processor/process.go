@@ -37,7 +37,7 @@ func (p *Processor) Process(ctx context.Context, path string) (*File, error) {
 			"checksum", prevFile.Checksum,
 			"ctime", prevFile.CTime,
 		)
-		if prevFile.CTime == file.CTime {
+		if prevFile.CTime.Equal(file.CTime) {
 			p.log.Infow(
 				"Skipping previously uploaded file",
 				"path", prevFile.LocalPath,
