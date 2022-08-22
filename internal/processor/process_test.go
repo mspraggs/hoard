@@ -118,7 +118,7 @@ func (s *ProcessorTestSuite) TestProcess() {
 			file, err := processor.Process(ctx, path)
 
 			s.Require().NoError(err)
-			s.Nil(file)
+			s.Equal(prevFile, file)
 		})
 		s.Run("for matching checksum", func() {
 			prevFile := &processor.File{
@@ -141,7 +141,7 @@ func (s *ProcessorTestSuite) TestProcess() {
 			file, err := processor.Process(ctx, path)
 
 			s.Require().NoError(err)
-			s.Nil(file)
+			s.Equal(prevFile, file)
 		})
 	})
 

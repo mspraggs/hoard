@@ -43,7 +43,7 @@ func (p *Processor) Process(ctx context.Context, path string) (*File, error) {
 				"path", prevFile.LocalPath,
 				"version", prevFile.Version,
 			)
-			return nil, nil
+			return prevFile, nil
 		}
 
 		if err := p.attachChecksum(file); err != nil {
@@ -56,7 +56,7 @@ func (p *Processor) Process(ctx context.Context, path string) (*File, error) {
 				"path", prevFile.LocalPath,
 				"version", prevFile.Version,
 			)
-			return nil, nil
+			return prevFile, nil
 		}
 		file.Key = prevFile.Key
 	} else if err := p.attachChecksum(file); err != nil {
